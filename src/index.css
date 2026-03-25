@@ -1,0 +1,26 @@
+﻿@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@500;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-background text-white font-body;
+  min-height: 100vh;
+  background-image: radial-gradient(circle at 15% 10%, rgba(124, 58, 237, 0.18), transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(0, 200, 150, 0.12), transparent 35%);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-heading;
+}
+
