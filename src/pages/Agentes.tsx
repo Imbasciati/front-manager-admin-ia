@@ -6,12 +6,14 @@ import { PageHeader } from "../components/shared/PageHeader";
 import { DataTable } from "../components/shared/DataTable";
 import { StatusBadge } from "../components/shared/StatusBadge";
 import { ConfirmModal } from "../components/shared/ConfirmModal";
+import { EscolherTipoAgente } from "../components/shared/EscolherTipoAgente";
 import { Button } from "../components/ui/button";
 import { agentesService } from "../services/agentes.service";
 
 export function Agentes() {
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mostrarEscolha, setMostrarEscolha] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -39,7 +41,7 @@ export function Agentes() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Agentes" subtitle="Crie e administre agentes de IA para vendas" actionLabel="Novo agente" onAction={() => navigate("/agentes/novo")} />
+      <PageHeader title="Agentes" subtitle="Crie e administre agentes de IA para vendas" actionLabel="Novo agente" onAction={() => setMostrarEscolha(true)} />
       <DataTable
         page={page}
         onPageChange={setPage}
@@ -75,6 +77,15 @@ export function Agentes() {
         description="Deseja remover este agente e seus documentos?"
         onConfirm={() => selectedId && deleteMutation.mutate(selectedId)}
       />
+
+      {mostrarEscolha && (
+        <EscolherTipoAgente
+          onClose={() => setMostrarEscolha(false)}
+          onVendas={() => { setMostrarEscolha(false); navigate("/agentes/novo", { state: { atuacao: "Vendas" } }); }}
+          onRecuperacao={() => { setMostrarEscolha(false); navigate("/agentes/novo/recuperacao"); }}
+          onZero={() => { setMostrarEscolha(false); navigate("/agentes/novo"); }}
+        />
+      )}
     </div>
   );
 }

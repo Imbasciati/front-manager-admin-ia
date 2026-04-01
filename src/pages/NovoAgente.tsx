@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -239,11 +239,13 @@ function ManyChatCard({ selected, onSelect }: { selected: Canal; onSelect: (c: C
 
 export function NovoAgente() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const atuacaoInicial = (location.state as { atuacao?: string } | null)?.atuacao ?? "";
   const [files, setFiles] = useState<File[]>([]);
   const [progress, setProgress] = useState(0);
   const [mostrarKey, setMostrarKey] = useState(false);
   const [produtoOpcao, setProdutoOpcao] = useState("");
-  const [atuacaoOpcao, setAtuacaoOpcao] = useState("");
+  const [atuacaoOpcao, setAtuacaoOpcao] = useState(atuacaoInicial);
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -254,6 +256,7 @@ export function NovoAgente() {
       tokensMaximos: 500,
       todosVendedores: true,
       canalIntegracao: "NENHUM",
+      atuacao: atuacaoInicial || undefined,
     },
   });
 

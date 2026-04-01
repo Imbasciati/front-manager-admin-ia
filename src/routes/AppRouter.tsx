@@ -7,6 +7,7 @@ import { Usuarios } from "../pages/Usuarios";
 import { Monitoramento } from "../pages/Monitoramento";
 import { Agentes } from "../pages/Agentes";
 import { NovoAgente } from "../pages/NovoAgente";
+import { NovoAgenteRecuperacao } from "../pages/NovoAgenteRecuperacao";
 import { EditarAgente } from "../pages/EditarAgente";
 import { TestarAgente } from "../pages/TestarAgente";
 import { Uso } from "../pages/Uso";
@@ -36,6 +37,7 @@ const router = createBrowserRouter([
       { element: <Layout><Monitoramento /></Layout>, path: "/monitoramento" },
       { element: <Layout><Agentes /></Layout>, path: "/agentes" },
       { element: <Layout><NovoAgente /></Layout>, path: "/agentes/novo" },
+      { element: <Layout><NovoAgenteRecuperacao /></Layout>, path: "/agentes/novo/recuperacao" },
       { element: <Layout><EditarAgente /></Layout>, path: "/agentes/:id/editar" },
       { element: <Layout><TestarAgente /></Layout>, path: "/agentes/:id/testar" },
       { element: <Layout><Uso /></Layout>, path: "/uso" },
