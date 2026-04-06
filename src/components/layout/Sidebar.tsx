@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { APP_VERSION } from "../../utils/constants";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: Home },
@@ -78,7 +79,7 @@ export function Sidebar() {
           <LogOut className="h-4 w-4" />
           Sair
         </button>
-        <p className="mt-4 text-[10px] text-white/40">v1.0.0</p>
+        <p className="mt-4 text-[10px] text-white/40">{APP_VERSION}</p>
       </div>
     </aside>
   );
