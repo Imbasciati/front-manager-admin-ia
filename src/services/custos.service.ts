@@ -30,4 +30,3 @@ export const custosService = {
     return data;
   },
 };
-

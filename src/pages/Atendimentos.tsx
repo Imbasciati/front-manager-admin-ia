@@ -143,6 +143,16 @@ function iniciaisNome(nome: string | null | undefined): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/** Converte sequências literais \n (backslash-n) em quebras reais de linha */
+function normalizeContent(text: string): string {
+  return text.replace(/\\n/g, "\n");
+}
+
+/** Texto limpo para preview de uma linha (sem quebras) */
+function previewText(text: string): string {
+  return normalizeContent(text).replace(/\n+/g, " ").trim();
+}
+
 // ═══════════════════════════════════════════════════════════
 // ABA SUPABASE (inalterada)
 // ═══════════════════════════════════════════════════════════
@@ -360,7 +370,7 @@ function ChatConversa({ profissao, sessionId }: { profissao: string; sessionId: 
                           : "rounded-bl-sm bg-white/8 text-white/90"
                       }`}
                     >
-                      {msg.conteudo}
+                      <span className="whitespace-pre-line">{normalizeContent(msg.conteudo)}</span>
                       <div className={`mt-1 flex items-center gap-1.5 justify-end text-[10px] ${isHuman ? "text-white/50" : "text-white/30"}`}>
                         <span>{isHuman ? "Humano" : "IA"}</span>
                         {hora && <span>· {hora}</span>}
@@ -688,7 +698,7 @@ function AbaUnnichat() {
                   {ultimaMensagem && (
                     <p className={`mt-0.5 truncate text-[11px] ${ativo ? "text-white/50" : "text-white/30"}`}>
                       {ultimaMensagem.origem === "AGENTE_IA" ? "IA: " : ""}
-                      {ultimaMensagem.conteudo}
+                      {previewText(ultimaMensagem.conteudo)}
                     </p>
                   )}
                 </div>
@@ -799,7 +809,7 @@ function AbaUnnichat() {
                                   : "rounded-bl-none bg-white/8 text-white/90"
                               }`}
                             >
-                              {msg.conteudo}
+                              <span className="whitespace-pre-line">{normalizeContent(msg.conteudo)}</span>
                               <div className={`mt-1 flex items-center gap-1 justify-end text-[10px] ${isCliente ? "text-white/45" : "text-white/30"}`}>
                                 {!isCliente && (
                                   <span>{msg.origem === "AGENTE_IA" ? "IA" : "Vendedor"}</span>

@@ -8,14 +8,22 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Bot, MessageCircle, MessageSquare, TrendingUp, Users } from "lucide-react";
+import { Bot, Clock, DollarSign, MessageCircle, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
 import { PageHeader } from "../components/shared/PageHeader";
 import { Card } from "../components/ui/card";
 import { conversasService } from "../services/atendimentos.service";
 import { usuariosService } from "../services/usuarios.service";
 import { agentesService } from "../services/agentes.service";
 import { custosService } from "../services/custos.service";
+import { api } from "../services/api";
 import type { ProfissaoResumo } from "../types/atendimento";
+
+function formatMs(ms: number): string {
+  if (!ms || ms <= 0) return "—";
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`;
+}
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -124,6 +132,13 @@ export function Dashboard() {
   const { data: custos } = useQuery({
     queryKey: ["dash-custos"],
     queryFn: () => custosService.resumo(),
+    staleTime: 60_000,
+  });
+
+  const { data: usoMetricas } = useQuery({
+    queryKey: ["dash-uso-metricas"],
+    queryFn: () => api.get<{ success: boolean; data: { totalExecucoes: number; totalAtendimentos: number; slaMediaMs: number; taxaErrosPct: number } }>("/uso/metricas").then(r => r.data.data),
+    staleTime: 60_000,
   });
 
   const chartData = [...(stats?.porProfissao ?? [])].sort(
@@ -177,6 +192,43 @@ export function Dashboard() {
             }
             loading={loadingStats}
             cor="bg-blue-500/20 text-blue-400"
+          />
+        </div>
+      </section>
+
+      {/* ── IA em operação (Unnichat) ── */}
+      <section>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">
+          IA em Operação · Unnichat
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            icon={MessageCircle}
+            label="Atendimentos Unnichat"
+            value={usoMetricas?.totalAtendimentos?.toLocaleString("pt-BR") ?? 0}
+            sub="Conversas via webhook Unnichat"
+            cor="bg-primary/20 text-primary"
+          />
+          <StatCard
+            icon={Zap}
+            label="Execuções IA"
+            value={usoMetricas?.totalExecucoes?.toLocaleString("pt-BR") ?? 0}
+            sub={`Mês: ${(custos as { mes?: { execucoes: number } } | undefined)?.mes?.execucoes ?? 0} execuções`}
+            cor="bg-indigo-500/20 text-indigo-400"
+          />
+          <StatCard
+            icon={Clock}
+            label="SLA Médio de Resposta"
+            value={formatMs(usoMetricas?.slaMediaMs ?? 0)}
+            sub="Tempo médio para gerar resposta"
+            cor="bg-cyan-500/20 text-cyan-400"
+          />
+          <StatCard
+            icon={DollarSign}
+            label="Custo mês (USD)"
+            value={`$${((custos as { mes?: { custoUsd: number } } | undefined)?.mes?.custoUsd ?? 0).toFixed(4)}`}
+            sub={`Taxa de erros: ${usoMetricas?.taxaErrosPct ?? 0}%`}
+            cor="bg-rose-500/20 text-rose-400"
           />
         </div>
       </section>
@@ -251,8 +303,9 @@ export function Dashboard() {
           />
           <StatCard
             icon={TrendingUp}
-            label="Custo mês (USD)"
-            value={`$${((custos as { custoMes?: number } | undefined)?.custoMes ?? 0).toFixed(2)}`}
+            label="Custo total acumulado"
+            value={`$${((custos as { total?: { custoUsd: number } } | undefined)?.total?.custoUsd ?? 0).toFixed(4)}`}
+            sub="Soma de todos os períodos"
             cor="bg-rose-500/20 text-rose-400"
           />
         </div>
