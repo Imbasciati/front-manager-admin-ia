@@ -70,6 +70,9 @@ function pct(v: number, total: number) {
 
 // ── serviço ───────────────────────────────────────────────────────────────────
 
+type ApiResp<T> = { success: boolean; data: T };
+type ApiPage<T> = { success: boolean; data: T; total: number; page: number; limit: number };
+
 function buildParams(di: string, df: string) {
   const p: Record<string, string> = {};
   if (di) p.dataInicio = di;
@@ -78,12 +81,12 @@ function buildParams(di: string, df: string) {
 }
 
 const svc = {
-  resumo:       (p: Record<string, string>) => api.get<Resumo>("/custos/resumo", { params: p }).then(r => r.data.data),
-  porProvedor:  (p: Record<string, string>) => api.get<PorProvedor[]>("/custos/por-provedor", { params: p }).then(r => r.data.data),
-  porModelo:    (p: Record<string, string>) => api.get<PorModelo[]>("/custos/por-modelo", { params: p }).then(r => r.data.data),
-  porAgente:    (p: Record<string, string>) => api.get<PorAgente[]>("/custos/por-agente", { params: p }).then(r => r.data.data),
-  porCanal:     (p: Record<string, string>) => api.get<PorCanal[]>("/custos/por-canal", { params: p }).then(r => r.data.data),
-  tendencia:    (p: Record<string, string>) => api.get<DiaTendencia[]>("/custos/tendencia", { params: p }).then(r => r.data.data),
+  resumo:      (p: Record<string, string>) => api.get<ApiResp<Resumo>>("/custos/resumo", { params: p }).then(r => r.data.data),
+  porProvedor: (p: Record<string, string>) => api.get<ApiResp<PorProvedor[]>>("/custos/por-provedor", { params: p }).then(r => r.data.data),
+  porModelo:   (p: Record<string, string>) => api.get<ApiResp<PorModelo[]>>("/custos/por-modelo", { params: p }).then(r => r.data.data),
+  porAgente:   (p: Record<string, string>) => api.get<ApiResp<PorAgente[]>>("/custos/por-agente", { params: p }).then(r => r.data.data),
+  porCanal:    (p: Record<string, string>) => api.get<ApiResp<PorCanal[]>>("/custos/por-canal", { params: p }).then(r => r.data.data),
+  tendencia:   (p: Record<string, string>) => api.get<ApiResp<DiaTendencia[]>>("/custos/tendencia", { params: p }).then(r => r.data.data),
 };
 
 // ── componentes ───────────────────────────────────────────────────────────────
@@ -106,10 +109,6 @@ function StatCard({ icon: Icon, label, value, sub, loading, cor }: {
       </div>
     </Card>
   );
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <p className="mt-2 text-sm font-semibold text-white/70 uppercase tracking-wider">{children}</p>;
 }
 
 function Skeleton({ h = "h-40" }: { h?: string }) {
@@ -171,7 +170,6 @@ export function Custos() {
   const r      = resumo.data;
   const load   = resumo.isLoading;
   const total  = r?.total.custoUsd ?? 0;
-  const totalTk = (r?.total.inputTokens ?? 0) + (r?.total.outputTokens ?? 0);
 
   const abas: { id: Aba; label: string }[] = [
     { id: "visao-geral", label: "Visão Geral" },
@@ -462,7 +460,7 @@ export function Custos() {
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────── */}
-      {aba === "log" && <LogExecucoes params={params} totalTokens={totalTk} />}
+      {aba === "log" && <LogExecucoes params={params} />}
 
       {/* rodapé */}
       <div className="flex items-center gap-2 text-xs text-white/30">
@@ -484,17 +482,13 @@ interface ExecucaoLog {
   criadoEm: string;
 }
 
-interface LogRes {
-  data: { data: ExecucaoLog[]; total: number; page: number; limit: number };
-}
-
-function LogExecucoes({ params, totalTokens }: { params: Record<string, string>; totalTokens: number }) {
+function LogExecucoes({ params }: { params: Record<string, string> }) {
   const [page, setPage] = useState(1);
 
   const q = useQuery({
     queryKey: ["custos-log", params, page],
     queryFn: () =>
-      api.get<LogRes["data"]>("/custos/log", { params: { ...params, page, limit: 20 } }).then(r => r.data.data),
+      api.get<ApiPage<ExecucaoLog[]>>("/custos/log", { params: { ...params, page, limit: 20 } }).then(r => r.data),
     staleTime: 30_000,
   });
 
