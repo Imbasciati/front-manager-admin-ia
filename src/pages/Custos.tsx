@@ -55,6 +55,10 @@ interface ExecucaoLog {
   custoUsd: number; duracao: number; erro?: string; criadoEm: string;
 }
 interface DateRange { from: Date | null; to: Date | null }
+interface AgenteInfo {
+  id: string; nome: string; produto: string | null;
+  atuacao: string | null; modelo: string; ativo: boolean;
+}
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -410,6 +414,13 @@ export function Custos() {
     filterAgente, filterModelo,
   ];
 
+  // Busca todos os agentes do sistema (independente de execuções)
+  const { data: agentesAll } = useQuery<AgenteInfo[]>({
+    queryKey: ["agentes-lista"],
+    queryFn: () => api.get<ApiResp<AgenteInfo[]>>("/agentes").then(r => r.data.data),
+    staleTime: 300_000,
+  });
+
   const resumo    = useQuery({ queryKey: ["custos-resumo",    ...qk], queryFn: () => svc.resumo(params),      staleTime: 60_000 });
   const provedor  = useQuery({ queryKey: ["custos-provedor",  ...qk], queryFn: () => svc.porProvedor(params),  staleTime: 60_000 });
   const modeloQ   = useQuery({ queryKey: ["custos-modelo",    ...qk], queryFn: () => svc.porModelo(params),    staleTime: 60_000 });
@@ -427,17 +438,34 @@ export function Custos() {
     retry: false,
   });
 
-  // Opções para filtros (derivadas dos dados carregados)
-  const agentesOpcoes = [...new Map(
-    (agenteQ.data ?? []).map(a => [a.agenteId, { value: a.agenteId, label: a.nomeAgente }])
-  ).values()];
-  const modelosOpcoes = (modeloQ.data ?? []).map(m => ({ value: m.modelo, label: m.modelo }));
-  const atuacoesOpcoes = [...new Set((agenteQ.data ?? []).map(a => a.atuacao).filter(Boolean))]
+  // Opções para filtros — derivadas dos AGENTES REAIS cadastrados no sistema
+  const agentesOpcoes = (agentesAll ?? []).map(a => ({ value: a.id, label: a.nome }));
+  const modelosOpcoes = [...new Set((agentesAll ?? []).map(a => a.modelo).filter(Boolean))]
+    .map(m => ({ value: m, label: m }));
+  const atuacoesOpcoes = [...new Set((agentesAll ?? []).map(a => a.atuacao).filter(Boolean))]
     .map(v => ({ value: v as string, label: v as string }));
 
-  // Dados filtrados client-side (por atuação)
-  const agenteData = (agenteQ.data ?? [])
-    .filter(a => !filterAtuacao || a.atuacao === filterAtuacao);
+  // Merge: todos os agentes cadastrados + seus custos (zero se sem execuções)
+  const custosPorAgenteMap = new Map((agenteQ.data ?? []).map(a => [a.agenteId, a]));
+  const agenteData = (agentesAll ?? [])
+    .filter(a => !filterAtuacao  || a.atuacao === filterAtuacao)
+    .filter(a => !filterAgente   || a.id === filterAgente)
+    .map(a => {
+      const c = custosPorAgenteMap.get(a.id);
+      return {
+        agenteId:     a.id,
+        nomeAgente:   a.nome,
+        produto:      a.produto,
+        atuacao:      a.atuacao,
+        modelo:       a.modelo,
+        execucoes:    c?.execucoes    ?? 0,
+        custoUsd:     c?.custoUsd     ?? 0,
+        inputTokens:  c?.inputTokens  ?? 0,
+        outputTokens: c?.outputTokens ?? 0,
+      };
+    })
+    .sort((a, b) => b.custoUsd - a.custoUsd);
+
   const modeloData = modeloQ.data ?? [];
 
   const r     = resumo.data;
@@ -666,15 +694,15 @@ export function Custos() {
           <div className="border-b border-white/10 px-5 py-4">
             <p className="font-semibold">Custo por agente</p>
             <p className="mt-0.5 text-xs text-white/40">
-              {filterAtuacao ? `Atuação: ${filterAtuacao} · ` : ""}
-              {agenteData.length} agente{agenteData.length !== 1 ? "s" : ""}
+              {agenteData.length} agente{agenteData.length !== 1 ? "s" : ""} cadastrado{agenteData.length !== 1 ? "s" : ""} ·{" "}
+              {agenteData.filter(a => a.execucoes > 0).length} com interações registradas
             </p>
           </div>
 
-          {agenteQ.isLoading ? (
+          {(agenteQ.isLoading || !agentesAll) ? (
             <div className="p-5 space-y-3"><Skeleton /><Skeleton /></div>
           ) : !agenteData.length ? (
-            <p className="p-5 text-sm text-white/40">Nenhuma execução encontrada para os filtros selecionados.</p>
+            <p className="p-5 text-sm text-white/40">Nenhum agente encontrado para os filtros selecionados.</p>
           ) : (
             <>
               <div className="p-4">
@@ -720,19 +748,22 @@ export function Custos() {
                   </thead>
                   <tbody>
                     {agenteData.map((a, i) => (
-                      <tr key={a.agenteId} className="border-b border-white/5 hover:bg-white/5">
+                      <tr key={a.agenteId} className={`border-b border-white/5 hover:bg-white/5 ${a.execucoes === 0 ? "opacity-50" : ""}`}>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full" style={{ background: CORES[i % CORES.length] }} />
+                            <div className="h-2 w-2 rounded-full" style={{ background: a.execucoes > 0 ? CORES[i % CORES.length] : "rgba(255,255,255,0.15)" }} />
                             <span className="font-medium">{a.nomeAgente}</span>
+                            {a.execucoes === 0 && (
+                              <span className="rounded-full bg-white/8 px-1.5 py-0.5 text-[9px] text-white/30">sem interações</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-white/50 text-xs">{a.atuacao ?? a.produto ?? "—"}</td>
                         <td className="px-4 py-3 text-white/60 font-mono text-xs">{a.modelo}</td>
                         <td className="px-4 py-3 text-right text-white/70">{a.execucoes.toLocaleString("pt-BR")}</td>
-                        <td className="px-4 py-3 text-right text-blue-400">{tk(a.inputTokens)}</td>
-                        <td className="px-4 py-3 text-right text-purple-400">{tk(a.outputTokens)}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-primary">{usd(a.custoUsd)}</td>
+                        <td className="px-4 py-3 text-right text-blue-400">{a.inputTokens > 0 ? tk(a.inputTokens) : "—"}</td>
+                        <td className="px-4 py-3 text-right text-purple-400">{a.outputTokens > 0 ? tk(a.outputTokens) : "—"}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-primary">{a.custoUsd > 0 ? usd(a.custoUsd) : "$0.0000"}</td>
                         <td className="px-4 py-3 text-right text-white/40">{pct(a.custoUsd, total)}</td>
                       </tr>
                     ))}
