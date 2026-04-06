@@ -1,15 +1,23 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import {
+  addMonths, eachDayOfInterval, endOfMonth, endOfWeek,
+  format, isBefore, isSameDay, isWithinInterval,
+  startOfMonth, startOfWeek, subDays, subMonths,
+} from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
   Bar, BarChart, CartesianGrid, Cell,
   Line, LineChart, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
-import { Bot, DollarSign, Layers, MessageCircle, Zap } from "lucide-react";
+import {
+  Bot, Calendar, ChevronDown, ChevronLeft, ChevronRight,
+  DollarSign, Layers, MessageCircle, X, Zap,
+} from "lucide-react";
 import { PageHeader } from "../components/shared/PageHeader";
 import { Card } from "../components/ui/card";
-import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { api } from "../services/api";
 
@@ -20,36 +28,37 @@ interface Resumo {
   mes:   { execucoes: number; custoUsd: number; inputTokens: number; outputTokens: number };
   total: { execucoes: number; custoUsd: number; inputTokens: number; outputTokens: number };
 }
-
 interface PorProvedor {
   provider: string; execucoes: number;
   custoUsd: number; inputTokens: number; outputTokens: number;
 }
-
 interface PorModelo {
   modelo: string; provider: string; execucoes: number;
   custoUsd: number; inputTokens: number; outputTokens: number;
 }
-
 interface PorAgente {
   agenteId: string; nomeAgente: string; produto: string | null;
   atuacao: string | null; modelo: string; execucoes: number;
   custoUsd: number; inputTokens: number; outputTokens: number;
 }
-
 interface PorCanal {
   canal: string; execucoes: number;
   custoUsd: number; inputTokens: number; outputTokens: number;
 }
-
 interface DiaTendencia {
   dia: string; custoUsd: number; inputTokens: number; outputTokens: number; execucoes: number;
 }
+interface ExecucaoLog {
+  id: string; contactId: string; nomeAgente: string;
+  modelo: string; provider: string; canal: string;
+  classificacao: string; inputTokens: number; outputTokens: number;
+  custoUsd: number; duracao: number; erro?: string; criadoEm: string;
+}
+interface DateRange { from: Date | null; to: Date | null }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 const CORES = ["#6366f1","#f59e0b","#10b981","#ec4899","#3b82f6","#f97316","#a855f7","#14b8a6"];
-
 const PROVIDER_LABEL: Record<string, string> = {
   openai: "OpenAI", anthropic: "Anthropic", google: "Google Gemini",
 };
@@ -68,15 +77,17 @@ function pct(v: number, total: number) {
   return total > 0 ? `${((v / total) * 100).toFixed(1)}%` : "—";
 }
 
-// ── serviço ───────────────────────────────────────────────────────────────────
+// ── API ───────────────────────────────────────────────────────────────────────
 
 type ApiResp<T> = { success: boolean; data: T };
 type ApiPage<T> = { success: boolean; data: T; total: number; page: number; limit: number };
 
-function buildParams(di: string, df: string) {
+function buildParams(range: DateRange, agenteId = "", modelo = "") {
   const p: Record<string, string> = {};
-  if (di) p.dataInicio = di;
-  if (df) p.dataFim    = df;
+  if (range.from) p.dataInicio = format(range.from, "yyyy-MM-dd");
+  if (range.to)   p.dataFim    = format(range.to,   "yyyy-MM-dd");
+  if (agenteId)   p.agenteId   = agenteId;
+  if (modelo)     p.modelo     = modelo;
   return p;
 }
 
@@ -89,7 +100,250 @@ const svc = {
   tendencia:   (p: Record<string, string>) => api.get<ApiResp<DiaTendencia[]>>("/custos/tendencia", { params: p }).then(r => r.data.data),
 };
 
-// ── componentes ───────────────────────────────────────────────────────────────
+// ── DateRangePicker ───────────────────────────────────────────────────────────
+
+const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (r: DateRange) => void }) {
+  const [open, setOpen]       = useState(false);
+  const [month, setMonth]     = useState(new Date());
+  const [hovered, setHovered] = useState<Date | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const start = startOfWeek(startOfMonth(month), { weekStartsOn: 0 });
+  const end   = endOfWeek(endOfMonth(month),     { weekStartsOn: 0 });
+  const dias  = eachDayOfInterval({ start, end });
+
+  function selectDia(dia: Date) {
+    if (!value.from || value.to) {
+      onChange({ from: dia, to: null });
+    } else if (isBefore(dia, value.from)) {
+      onChange({ from: dia, to: null });
+    } else {
+      onChange({ from: value.from, to: dia });
+      setOpen(false);
+    }
+  }
+
+  function emRange(dia: Date) {
+    const fim = value.from && !value.to && hovered && !isBefore(hovered, value.from) ? hovered : value.to;
+    if (value.from && fim) {
+      return isWithinInterval(dia, { start: value.from, end: fim });
+    }
+    return false;
+  }
+
+  const label = value.from
+    ? value.to
+      ? `${format(value.from, "dd/MM/yy")} → ${format(value.to, "dd/MM/yy")}`
+      : `${format(value.from, "dd/MM/yy")} → ...`
+    : "Selecionar período";
+
+  const atalhos = [
+    { label: "Hoje",      from: new Date(),              to: new Date() },
+    { label: "7 dias",    from: subDays(new Date(), 6),  to: new Date() },
+    { label: "30 dias",   from: subDays(new Date(), 29), to: new Date() },
+    { label: "Este mês",  from: startOfMonth(new Date()), to: new Date() },
+    { label: "Mês ant.",  from: startOfMonth(subMonths(new Date(), 1)), to: endOfMonth(subMonths(new Date(), 1)) },
+  ];
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-sm transition-all ${
+          open || value.from
+            ? "border-primary/60 bg-primary/10 text-white"
+            : "border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:bg-white/8 hover:text-white"
+        }`}
+      >
+        <Calendar className="h-3.5 w-3.5 shrink-0" />
+        <span className="whitespace-nowrap">{label}</span>
+        {value.from ? (
+          <span
+            className="ml-0.5 rounded-full p-0.5 hover:bg-white/15 transition-colors"
+            onClick={e => { e.stopPropagation(); onChange({ from: null, to: null }); }}
+          >
+            <X className="h-3 w-3" />
+          </span>
+        ) : (
+          <ChevronDown className="h-3 w-3 text-white/30" />
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-white/10 bg-[#0f172a] shadow-2xl shadow-black/60">
+          {/* Atalhos rápidos */}
+          <div className="flex flex-wrap gap-1.5 border-b border-white/8 px-4 py-3">
+            {atalhos.map(a => (
+              <button
+                key={a.label}
+                onClick={() => { onChange({ from: a.from, to: a.to }); setOpen(false); }}
+                className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-medium text-white/60 hover:bg-primary/20 hover:text-primary transition-colors"
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Navegação do mês */}
+          <div className="flex items-center justify-between px-4 pt-3 pb-2">
+            <button
+              onClick={() => setMonth(m => subMonths(m, 1))}
+              className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-semibold capitalize text-white">
+              {format(month, "MMMM yyyy", { locale: ptBR })}
+            </span>
+            <button
+              onClick={() => setMonth(m => addMonths(m, 1))}
+              className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Cabeçalho dos dias */}
+          <div className="grid grid-cols-7 px-2">
+            {DIAS_SEMANA.map(d => (
+              <div key={d} className="py-1 text-center text-[10px] font-medium text-white/25">{d}</div>
+            ))}
+          </div>
+
+          {/* Grade de dias */}
+          <div className="grid grid-cols-7 gap-y-0.5 px-2 pb-4">
+            {dias.map((dia, idx) => {
+              const isFrom     = value.from ? isSameDay(dia, value.from) : false;
+              const isTo       = value.to   ? isSameDay(dia, value.to)   : false;
+              const inRange    = emRange(dia);
+              const mesAtual   = dia.getMonth() === month.getMonth();
+              const isEdge     = isFrom || isTo;
+
+              return (
+                <button
+                  key={idx}
+                  onClick={() => selectDia(dia)}
+                  onMouseEnter={() => setHovered(dia)}
+                  onMouseLeave={() => setHovered(null)}
+                  className={[
+                    "relative h-8 text-xs font-medium transition-colors select-none",
+                    !mesAtual ? "text-white/15 pointer-events-none" : "cursor-pointer",
+                    isEdge
+                      ? "bg-primary text-white z-10 rounded-lg"
+                      : inRange
+                        ? "bg-primary/15 text-primary"
+                        : mesAtual
+                          ? "text-white/70 hover:bg-white/10 hover:text-white rounded-lg"
+                          : "",
+                    inRange && !isFrom && !isTo && !isEdge ? "" : "",
+                  ].join(" ")}
+                >
+                  {format(dia, "d")}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Dica */}
+          {value.from && !value.to && (
+            <p className="border-t border-white/8 px-4 py-2.5 text-center text-[10px] text-white/30">
+              Clique em outra data para fechar o intervalo
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── FilterSelect ──────────────────────────────────────────────────────────────
+
+function FilterSelect({
+  label, value, onChange, options, placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const selected = options.find(o => o.value === value);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-sm transition-all min-w-[140px] ${
+          open || value
+            ? "border-primary/60 bg-primary/10 text-white"
+            : "border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:bg-white/8 hover:text-white"
+        }`}
+      >
+        <span className="flex-1 text-left truncate">
+          {selected ? selected.label : <span className="text-white/35">{placeholder ?? label}</span>}
+        </span>
+        {value ? (
+          <span
+            className="rounded-full p-0.5 hover:bg-white/15 transition-colors"
+            onClick={e => { e.stopPropagation(); onChange(""); }}
+          >
+            <X className="h-3 w-3" />
+          </span>
+        ) : (
+          <ChevronDown className="h-3 w-3 text-white/30 shrink-0" />
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-xl border border-white/10 bg-[#0f172a] shadow-2xl shadow-black/60 overflow-hidden">
+          <div className="px-3 py-2 border-b border-white/8">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30">{label}</p>
+          </div>
+          <div className="max-h-52 overflow-y-auto py-1">
+            {options.length === 0 && (
+              <p className="px-3 py-2 text-xs text-white/30">Sem dados disponíveis</p>
+            )}
+            {options.map(o => (
+              <button
+                key={o.value}
+                onClick={() => { onChange(o.value === value ? "" : o.value); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-white/5 ${
+                  o.value === value ? "text-primary" : "text-white/70"
+                }`}
+              >
+                {o.value === value && <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
+                <span className={`truncate ${o.value !== value ? "pl-3.5" : ""}`}>{o.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Componentes visuais ───────────────────────────────────────────────────────
 
 function StatCard({ icon: Icon, label, value, sub, loading, cor }: {
   icon: React.ElementType; label: string; value: string;
@@ -133,29 +387,35 @@ function TooltipDia({ active, payload, label }: { active?: boolean; payload?: { 
 function BarraProgresso({ pct: p, cor }: { pct: number; cor: string }) {
   return (
     <div className="h-1.5 w-full rounded-full bg-white/10">
-      <div className="h-full rounded-full" style={{ width: `${Math.min(100, p)}%`, background: cor }} />
+      <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, p)}%`, background: cor }} />
     </div>
   );
 }
 
-// ── página principal ──────────────────────────────────────────────────────────
+// ── Página principal ──────────────────────────────────────────────────────────
 
 type Aba = "visao-geral" | "por-agente" | "por-modelo" | "log";
 
 export function Custos() {
-  const [aba, setAba] = useState<Aba>("visao-geral");
-  const [di, setDi]   = useState("");
-  const [df, setDf]   = useState("");
+  const [aba,           setAba]           = useState<Aba>("visao-geral");
+  const [dateRange,     setDateRange]     = useState<DateRange>({ from: null, to: null });
+  const [filterAgente,  setFilterAgente]  = useState("");
+  const [filterModelo,  setFilterModelo]  = useState("");
+  const [filterAtuacao, setFilterAtuacao] = useState("");
 
-  const params = buildParams(di, df);
-  const qk     = [di, df];
+  const params = buildParams(dateRange, filterAgente, filterModelo);
+  const qk     = [
+    dateRange.from?.toISOString() ?? "",
+    dateRange.to?.toISOString()   ?? "",
+    filterAgente, filterModelo,
+  ];
 
-  const resumo     = useQuery({ queryKey: ["custos-resumo",    ...qk], queryFn: () => svc.resumo(params),      staleTime: 60_000 });
-  const provedor   = useQuery({ queryKey: ["custos-provedor",  ...qk], queryFn: () => svc.porProvedor(params),  staleTime: 60_000 });
-  const modelo     = useQuery({ queryKey: ["custos-modelo",    ...qk], queryFn: () => svc.porModelo(params),    staleTime: 60_000 });
-  const agente     = useQuery({ queryKey: ["custos-agente",    ...qk], queryFn: () => svc.porAgente(params),    staleTime: 60_000 });
-  const canal      = useQuery({ queryKey: ["custos-canal",     ...qk], queryFn: () => svc.porCanal(params),     staleTime: 60_000 });
-  const tendencia  = useQuery({ queryKey: ["custos-tendencia", ...qk], queryFn: () => svc.tendencia(params),    staleTime: 60_000 });
+  const resumo    = useQuery({ queryKey: ["custos-resumo",    ...qk], queryFn: () => svc.resumo(params),      staleTime: 60_000 });
+  const provedor  = useQuery({ queryKey: ["custos-provedor",  ...qk], queryFn: () => svc.porProvedor(params),  staleTime: 60_000 });
+  const modeloQ   = useQuery({ queryKey: ["custos-modelo",    ...qk], queryFn: () => svc.porModelo(params),    staleTime: 60_000 });
+  const agenteQ   = useQuery({ queryKey: ["custos-agente",    ...qk], queryFn: () => svc.porAgente(params),    staleTime: 60_000 });
+  const canal     = useQuery({ queryKey: ["custos-canal",     ...qk], queryFn: () => svc.porCanal(params),     staleTime: 60_000 });
+  const tendencia = useQuery({ queryKey: ["custos-tendencia", ...qk], queryFn: () => svc.tendencia(params),    staleTime: 60_000 });
 
   const { data: brl } = useQuery<number | undefined>({
     queryKey: ["exchange-brl"],
@@ -167,9 +427,24 @@ export function Custos() {
     retry: false,
   });
 
-  const r      = resumo.data;
-  const load   = resumo.isLoading;
-  const total  = r?.total.custoUsd ?? 0;
+  // Opções para filtros (derivadas dos dados carregados)
+  const agentesOpcoes = [...new Map(
+    (agenteQ.data ?? []).map(a => [a.agenteId, { value: a.agenteId, label: a.nomeAgente }])
+  ).values()];
+  const modelosOpcoes = (modeloQ.data ?? []).map(m => ({ value: m.modelo, label: m.modelo }));
+  const atuacoesOpcoes = [...new Set((agenteQ.data ?? []).map(a => a.atuacao).filter(Boolean))]
+    .map(v => ({ value: v as string, label: v as string }));
+
+  // Dados filtrados client-side (por atuação)
+  const agenteData = (agenteQ.data ?? [])
+    .filter(a => !filterAtuacao || a.atuacao === filterAtuacao);
+  const modeloData = modeloQ.data ?? [];
+
+  const r     = resumo.data;
+  const load  = resumo.isLoading;
+  const total = r?.total.custoUsd ?? 0;
+
+  const temFiltro = !!(dateRange.from || filterAgente || filterModelo || filterAtuacao);
 
   const abas: { id: Aba; label: string }[] = [
     { id: "visao-geral", label: "Visão Geral" },
@@ -178,29 +453,94 @@ export function Custos() {
     { id: "log",         label: "Log"         },
   ];
 
+  function limparFiltros() {
+    setDateRange({ from: null, to: null });
+    setFilterAgente("");
+    setFilterModelo("");
+    setFilterAtuacao("");
+  }
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Custos de IA" subtitle="Gastos reais por agente, modelo, provedor e canal — baseado em tokens consumidos" />
+      <PageHeader
+        title="Custos de IA"
+        subtitle="Gastos reais por agente, modelo, provedor e canal — baseado em tokens consumidos"
+      />
 
-      {/* ── filtro ── */}
-      <Card className="flex flex-wrap items-end gap-4 py-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-white/50">Data início</label>
-          <Input type="date" value={di} onChange={e => setDi(e.target.value)} className="w-44" />
+      {/* ── Barra de filtros ── */}
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+
+          <div className="h-5 w-px bg-white/10" />
+
+          <FilterSelect
+            label="Agente"
+            placeholder="Todos os agentes"
+            value={filterAgente}
+            onChange={setFilterAgente}
+            options={agentesOpcoes}
+          />
+          <FilterSelect
+            label="Modelo"
+            placeholder="Todos os modelos"
+            value={filterModelo}
+            onChange={setFilterModelo}
+            options={modelosOpcoes}
+          />
+          <FilterSelect
+            label="Atuação"
+            placeholder="Todas as atuações"
+            value={filterAtuacao}
+            onChange={setFilterAtuacao}
+            options={atuacoesOpcoes}
+          />
+
+          {temFiltro && (
+            <>
+              <div className="h-5 w-px bg-white/10" />
+              <button
+                onClick={limparFiltros}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors"
+              >
+                <X className="h-3 w-3" />
+                Limpar filtros
+              </button>
+            </>
+          )}
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-white/50">Data fim</label>
-          <Input type="date" value={df} onChange={e => setDf(e.target.value)} className="w-44" />
-        </div>
-        {(di || df) && (
-          <Button variant="outline" size="sm" onClick={() => { setDi(""); setDf(""); }}>
-            Limpar filtro
-          </Button>
+
+        {/* Badge de filtros ativos */}
+        {temFiltro && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {dateRange.from && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 text-[10px] font-medium text-primary">
+                <Calendar className="h-2.5 w-2.5" />
+                {dateRange.to
+                  ? `${format(dateRange.from, "dd/MM/yy")} → ${format(dateRange.to, "dd/MM/yy")}`
+                  : format(dateRange.from, "dd/MM/yy")}
+              </span>
+            )}
+            {filterAgente && agentesOpcoes.find(a => a.value === filterAgente) && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-medium text-amber-400">
+                Agente: {agentesOpcoes.find(a => a.value === filterAgente)?.label}
+              </span>
+            )}
+            {filterModelo && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[10px] font-medium text-blue-400">
+                Modelo: {filterModelo}
+              </span>
+            )}
+            {filterAtuacao && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 px-2.5 py-0.5 text-[10px] font-medium text-purple-400">
+                Atuação: {filterAtuacao}
+              </span>
+            )}
+          </div>
         )}
-        {di && !df && <span className="text-xs text-amber-400">Selecione também a data fim</span>}
       </Card>
 
-      {/* ── cards resumo ── */}
+      {/* ── Cards de resumo ── */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={DollarSign} label="Custo total" loading={load}
           value={usd(total)}
@@ -220,25 +560,27 @@ export function Custos() {
           cor="bg-purple-500/20 text-purple-400" />
       </div>
 
-      {/* ── abas ── */}
+      {/* ── Abas ── */}
       <div className="flex gap-1 border-b border-white/10">
         {abas.map(a => (
           <button key={a.id} onClick={() => setAba(a.id)}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${aba === a.id ? "border-b-2 border-primary text-primary" : "text-white/50 hover:text-white/80"}`}>
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
+              aba === a.id ? "border-b-2 border-primary text-primary" : "text-white/50 hover:text-white/80"
+            }`}>
             {a.label}
           </button>
         ))}
       </div>
 
-      {/* ──────────────────────────────────────────────────────────────────────── */}
+      {/* ── Visão Geral ── */}
       {aba === "visao-geral" && (
         <div className="space-y-6">
-
-          {/* Tendência diária */}
           <Card className="overflow-hidden p-0">
             <div className="border-b border-white/10 px-5 py-4">
               <p className="font-semibold">Custo diário</p>
-              <p className="mt-0.5 text-xs text-white/40">{di && df ? "Período filtrado" : "Últimos 30 dias"}</p>
+              <p className="mt-0.5 text-xs text-white/40">
+                {dateRange.from && dateRange.to ? "Período filtrado" : "Últimos 30 dias"}
+              </p>
             </div>
             <div className="p-4">
               {tendencia.isLoading ? <Skeleton h="h-52" /> : (
@@ -257,9 +599,7 @@ export function Custos() {
             </div>
           </Card>
 
-          {/* Por provedor + Por canal */}
           <div className="grid gap-4 xl:grid-cols-2">
-
             <Card className="overflow-hidden p-0">
               <div className="border-b border-white/10 px-5 py-4">
                 <p className="font-semibold">Por provedor de IA</p>
@@ -320,24 +660,26 @@ export function Custos() {
         </div>
       )}
 
-      {/* ──────────────────────────────────────────────────────────────────────── */}
+      {/* ── Por Agente ── */}
       {aba === "por-agente" && (
         <Card className="overflow-hidden p-0">
           <div className="border-b border-white/10 px-5 py-4">
             <p className="font-semibold">Custo por agente</p>
-            <p className="mt-0.5 text-xs text-white/40">Cada agente configurado e seus gastos reais com IA</p>
+            <p className="mt-0.5 text-xs text-white/40">
+              {filterAtuacao ? `Atuação: ${filterAtuacao} · ` : ""}
+              {agenteData.length} agente{agenteData.length !== 1 ? "s" : ""}
+            </p>
           </div>
 
-          {agente.isLoading ? (
+          {agenteQ.isLoading ? (
             <div className="p-5 space-y-3"><Skeleton /><Skeleton /></div>
-          ) : !agente.data?.length ? (
-            <p className="p-5 text-sm text-white/40">Nenhuma execução registrada ainda.</p>
+          ) : !agenteData.length ? (
+            <p className="p-5 text-sm text-white/40">Nenhuma execução encontrada para os filtros selecionados.</p>
           ) : (
             <>
-              {/* Gráfico de barras */}
               <div className="p-4">
                 <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={agente.data.slice(0, 8)} margin={{ top: 4, right: 8, left: -10, bottom: 0 }} barSize={28}>
+                  <BarChart data={agenteData.slice(0, 8)} margin={{ top: 4, right: 8, left: -10, bottom: 0 }} barSize={28}>
                     <XAxis dataKey="nomeAgente" tickFormatter={v => String(v).split(" ")[0]}
                       tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 10 }} axisLine={false} tickLine={false} />
                     <YAxis tickFormatter={v => usdK(Number(v))}
@@ -356,19 +698,18 @@ export function Custos() {
                       );
                     }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
                     <Bar dataKey="custoUsd" radius={[6, 6, 0, 0]}>
-                      {agente.data.slice(0, 8).map((_, i) => <Cell key={i} fill={CORES[i % CORES.length]} />)}
+                      {agenteData.slice(0, 8).map((_, i) => <Cell key={i} fill={CORES[i % CORES.length]} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* Tabela */}
               <div className="overflow-x-auto border-t border-white/10">
                 <table className="w-full text-sm">
                   <thead className="text-xs text-white/50 border-b border-white/10">
                     <tr>
                       <th className="px-4 py-3 text-left">Agente</th>
-                      <th className="px-4 py-3 text-left">Tipo</th>
+                      <th className="px-4 py-3 text-left">Atuação</th>
                       <th className="px-4 py-3 text-left">Modelo</th>
                       <th className="px-4 py-3 text-right">Execuções</th>
                       <th className="px-4 py-3 text-right">Tokens entrada</th>
@@ -378,7 +719,7 @@ export function Custos() {
                     </tr>
                   </thead>
                   <tbody>
-                    {agente.data.map((a, i) => (
+                    {agenteData.map((a, i) => (
                       <tr key={a.agenteId} className="border-b border-white/5 hover:bg-white/5">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
@@ -403,7 +744,7 @@ export function Custos() {
         </Card>
       )}
 
-      {/* ──────────────────────────────────────────────────────────────────────── */}
+      {/* ── Por Modelo ── */}
       {aba === "por-modelo" && (
         <Card className="overflow-hidden p-0">
           <div className="border-b border-white/10 px-5 py-4">
@@ -411,10 +752,10 @@ export function Custos() {
             <p className="mt-0.5 text-xs text-white/40">Cada modelo utilizado e seus tokens/custos reais</p>
           </div>
 
-          {modelo.isLoading ? (
+          {modeloQ.isLoading ? (
             <div className="p-5"><Skeleton /></div>
-          ) : !modelo.data?.length ? (
-            <p className="p-5 text-sm text-white/40">Nenhuma execução registrada ainda.</p>
+          ) : !modeloData.length ? (
+            <p className="p-5 text-sm text-white/40">Nenhuma execução encontrada para os filtros selecionados.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -431,7 +772,7 @@ export function Custos() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(modelo.data ?? []).map((m, i) => (
+                  {modeloData.map((m, i) => (
                     <tr key={m.modelo} className="border-b border-white/5 hover:bg-white/5">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -459,10 +800,10 @@ export function Custos() {
         </Card>
       )}
 
-      {/* ──────────────────────────────────────────────────────────────────────── */}
+      {/* ── Log ── */}
       {aba === "log" && <LogExecucoes params={params} />}
 
-      {/* rodapé */}
+      {/* Rodapé */}
       <div className="flex items-center gap-2 text-xs text-white/30">
         <MessageCircle className="h-3 w-3" />
         Custos calculados a partir de tokens reais retornados pela API de cada provedor ·
@@ -472,14 +813,13 @@ export function Custos() {
   );
 }
 
-// ── Log de execuções (aba separada) ──────────────────────────────────────────
+// ── Log de execuções ──────────────────────────────────────────────────────────
 
 interface ExecucaoLog {
   id: string; contactId: string; nomeAgente: string;
   modelo: string; provider: string; canal: string;
   classificacao: string; inputTokens: number; outputTokens: number;
-  custoUsd: number; duracao: number; erro?: string;
-  criadoEm: string;
+  custoUsd: number; duracao: number; erro?: string; criadoEm: string;
 }
 
 function LogExecucoes({ params }: { params: Record<string, string> }) {
@@ -498,11 +838,9 @@ function LogExecucoes({ params }: { params: Record<string, string> }) {
 
   return (
     <Card className="overflow-hidden p-0">
-      <div className="border-b border-white/10 px-5 py-4 flex items-center justify-between">
-        <div>
-          <p className="font-semibold">Log de execuções</p>
-          <p className="mt-0.5 text-xs text-white/40">{total.toLocaleString("pt-BR")} execuções registradas</p>
-        </div>
+      <div className="border-b border-white/10 px-5 py-4">
+        <p className="font-semibold">Log de execuções</p>
+        <p className="mt-0.5 text-xs text-white/40">{total.toLocaleString("pt-BR")} execuções registradas</p>
       </div>
 
       {q.isLoading ? (
@@ -544,7 +882,9 @@ function LogExecucoes({ params }: { params: Record<string, string> }) {
                 </tr>
               ))}
               {!rows.length && (
-                <tr><td colSpan={9} className="py-10 text-center text-white/40">Nenhuma execução registrada ainda.</td></tr>
+                <tr>
+                  <td colSpan={9} className="py-10 text-center text-white/40">Nenhuma execução registrada ainda.</td>
+                </tr>
               )}
             </tbody>
           </table>
