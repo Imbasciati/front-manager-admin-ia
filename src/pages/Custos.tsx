@@ -417,7 +417,7 @@ export function Custos() {
   // Busca todos os agentes do sistema (independente de execuções)
   const { data: agentesAll } = useQuery<AgenteInfo[]>({
     queryKey: ["agentes-lista"],
-    queryFn: () => api.get<ApiResp<AgenteInfo[]>>("/agentes").then(r => r.data.data),
+    queryFn: () => api.get<ApiResp<AgenteInfo[]>>("/agentes", { params: { limit: 100 } }).then(r => r.data.data),
     staleTime: 300_000,
   });
 

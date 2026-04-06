@@ -363,7 +363,7 @@ export function Uso() {
   });
   const agentesQ   = useQuery<AgenteInfo[]>({
     queryKey: ["agentes-lista-uso"],
-    queryFn:  () => api.get<ApiResp<AgenteInfo[]>>("/agentes").then(r => r.data.data),
+    queryFn:  () => api.get<ApiResp<AgenteInfo[]>>("/agentes", { params: { limit: 100 } }).then(r => r.data.data),
     staleTime: 300_000,
   });
 
