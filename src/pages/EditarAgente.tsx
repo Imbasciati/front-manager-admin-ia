@@ -23,6 +23,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Button } from "../components/ui/button";
 import { agentesService } from "../services/agentes.service";
 import { ProviderModelSelect } from "../components/shared/ProviderModelSelect";
+import { conexaoUnnichatService } from "../services/conexao-unnichat.service";
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ const schema = z.object({
   tokensMaximos: z.coerce.number().int().min(50),
   canalIntegracao: z.enum(["NENHUM", "UNNICHAT", "MANYCHAT", "AMBOS"]).default("NENHUM"),
   unnichatAtivo: z.boolean().optional(),
-  unnichatConexaoNome: z.string().optional(),
+  conexaoUnnichatId: z.string().optional().nullable(),
   produto: z.string().optional(),
   atuacao: z.string().optional(),
 });
@@ -74,7 +75,90 @@ function tempInfo(t: number) {
   return { label: "Muito Criativo", desc: "Alta variação nas respostas. Use com cuidado em atendimento profissional.", cor: "text-orange-400" };
 }
 
-// ── provedores ────────────────────────────────────────────────────────────────
+// ── seção expandida Unnichat ──────────────────────────────────────────────────
+
+function UnnichatExpandido({
+  register,
+  watch,
+  setValue,
+  webhookUrl,
+  webhookCopied,
+  copiarWebhook,
+  guia,
+  setGuia,
+}: {
+  register: ReturnType<typeof useForm<Values>>["register"];
+  watch: ReturnType<typeof useForm<Values>>["watch"];
+  setValue: ReturnType<typeof useForm<Values>>["setValue"];
+  webhookUrl: string;
+  webhookCopied: boolean;
+  copiarWebhook: () => void;
+  guia: boolean;
+  setGuia: (v: boolean) => void;
+}) {
+  const { data: conexoes = [] } = useQuery({
+    queryKey: ["conexoes-unnichat"],
+    queryFn: conexaoUnnichatService.list,
+  });
+
+  const conexaoSelecionada = watch("conexaoUnnichatId");
+
+  return (
+    <div className="space-y-3 border-t border-green-500/20 px-4 pb-4 pt-3">
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="unnichat-ativo" {...register("unnichatAtivo")} className="h-4 w-4 accent-primary" />
+        <label htmlFor="unnichat-ativo" className="text-sm">Ativar recebimento de mensagens</label>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs text-white/50">Conexão Unnichat</label>
+        {conexoes.length === 0 ? (
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-400">
+            Nenhuma conexão disponível. Configure em{" "}
+            <strong>Configurações → Unnichat</strong>.
+          </div>
+        ) : (
+          <select
+            className="h-10 w-full rounded-md border border-white/20 bg-surface px-3 text-sm"
+            value={conexaoSelecionada ?? ""}
+            onChange={(e) => setValue("conexaoUnnichatId", e.target.value || null)}
+          >
+            <option value="">Selecione a conexão...</option>
+            {conexoes.map((c) => (
+              <option key={c.id} value={c.id}>{c.nome}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs text-white/50">URL do Webhook (configure no Unnichat)</label>
+        <div className="flex gap-2">
+          <input readOnly value={webhookUrl} className="h-10 flex-1 rounded-md border border-white/20 bg-white/5 px-3 font-mono text-xs text-white/70" />
+          <button type="button" onClick={copiarWebhook} className="flex h-10 items-center gap-1.5 rounded-md border border-white/20 bg-white/5 px-3 text-xs text-white/60 hover:text-white">
+            <Copy className="h-3.5 w-3.5" />
+            {webhookCopied ? "Copiado!" : "Copiar"}
+          </button>
+        </div>
+      </div>
+
+      <button type="button" onClick={() => setGuia(!guia)} className="flex items-center gap-1.5 text-xs text-green-400/70 hover:text-green-400">
+        {guia ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        Como configurar no Unnichat?
+      </button>
+      {guia && (
+        <div className="rounded-lg bg-white/5 p-3 text-xs text-white/60 space-y-1">
+          <ol className="list-inside list-decimal space-y-1">
+            <li>Crie ou selecione uma conexão em <strong className="text-white">Configurações → Unnichat</strong></li>
+            <li>Selecione a conexão no campo acima</li>
+            <li>Copie a <strong className="text-white">URL do Webhook</strong> e configure no painel do Unnichat</li>
+            <li>Ative o recebimento e salve o agente</li>
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── página ────────────────────────────────────────────────────────────────────
 
@@ -319,45 +403,16 @@ export function EditarAgente() {
               </button>
 
               {mostrarUnnichat && (
-                <div className="space-y-3 border-t border-green-500/20 px-4 pb-4 pt-3">
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" id="unnichat-ativo" {...register("unnichatAtivo")} className="h-4 w-4 accent-primary" />
-                    <label htmlFor="unnichat-ativo" className="text-sm">Ativar recebimento de mensagens</label>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-white/50">Nome da conexão (opcional)</label>
-                    <Input placeholder="ex: WhatsApp Principal" {...register("unnichatConexaoNome")} />
-                  </div>
-                  <div className="rounded-lg bg-green-500/5 px-3 py-2 text-xs text-white/60">
-                    <p>A <strong className="text-white">API Key</strong> é configurada globalmente em{" "}
-                      <strong className="text-green-400">Configurações → Unnichat</strong>.
-                    </p>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-white/50">URL do Webhook (configure no Unnichat)</label>
-                    <div className="flex gap-2">
-                      <input readOnly value={webhookUrl} className="h-10 flex-1 rounded-md border border-white/20 bg-white/5 px-3 font-mono text-xs text-white/70" />
-                      <button type="button" onClick={copiarWebhook} className="flex h-10 items-center gap-1.5 rounded-md border border-white/20 bg-white/5 px-3 text-xs text-white/60 hover:text-white">
-                        <Copy className="h-3.5 w-3.5" />
-                        {webhookCopied ? "Copiado!" : "Copiar"}
-                      </button>
-                    </div>
-                  </div>
-                  <button type="button" onClick={() => setGuiaUnnichat(!guiaUnnichat)} className="flex items-center gap-1.5 text-xs text-green-400/70 hover:text-green-400">
-                    {guiaUnnichat ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    Como configurar no Unnichat?
-                  </button>
-                  {guiaUnnichat && (
-                    <div className="rounded-lg bg-white/5 p-3 text-xs text-white/60 space-y-1">
-                      <ol className="list-inside list-decimal space-y-1">
-                        <li>Configure a API Key em <strong className="text-white">Configurações → Unnichat</strong></li>
-                        <li>Copie a <strong className="text-white">URL do Webhook</strong> acima</li>
-                        <li>No Unnichat, configure o webhook com essa URL</li>
-                        <li>Ative o recebimento e salve o agente</li>
-                      </ol>
-                    </div>
-                  )}
-                </div>
+                <UnnichatExpandido
+                  register={register}
+                  watch={watch}
+                  setValue={setValue}
+                  webhookUrl={webhookUrl}
+                  webhookCopied={webhookCopied}
+                  copiarWebhook={copiarWebhook}
+                  guia={guiaUnnichat}
+                  setGuia={setGuiaUnnichat}
+                />
               )}
             </div>
 

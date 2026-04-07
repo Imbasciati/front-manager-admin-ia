@@ -29,6 +29,8 @@ import { Button } from "../components/ui/button";
 import { FileUpload } from "../components/shared/FileUpload";
 import { agentesService } from "../services/agentes.service";
 import { ProviderModelSelect } from "../components/shared/ProviderModelSelect";
+import { conexaoUnnichatService } from "../services/conexao-unnichat.service";
+import { useQuery } from "@tanstack/react-query";
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
@@ -70,7 +72,7 @@ const schema = z.object({
   todosVendedores: z.boolean().default(true),
   canalIntegracao: z.enum(["NENHUM", "UNNICHAT", "MANYCHAT", "AMBOS"]).default("NENHUM"),
   unnichatAtivo: z.boolean().optional(),
-  unnichatConexaoNome: z.string().optional(),
+  conexaoUnnichatId: z.string().optional(),
   produto: z.string().optional(),
   atuacao: z.string().optional(),
 });
@@ -97,11 +99,18 @@ interface CanalCardProps {
   selected: Canal;
   onSelect: (c: Canal) => void;
   register: ReturnType<typeof useForm<Values>>["register"];
+  setValue: ReturnType<typeof useForm<Values>>["setValue"];
+  conexaoUnnichatId?: string;
 }
 
-function UnnichatCard({ selected, onSelect, register }: Omit<CanalCardProps, "canal">) {
+function UnnichatCard({ selected, onSelect, setValue, conexaoUnnichatId }: Omit<CanalCardProps, "canal" | "register">) {
   const ativo = selected === "UNNICHAT" || selected === "AMBOS";
-  const [aberto, setAberto] = useState(false);
+
+  const { data: conexoes = [] } = useQuery({
+    queryKey: ["conexoes-unnichat"],
+    queryFn: conexaoUnnichatService.list,
+    enabled: ativo,
+  });
 
   return (
     <div className={`rounded-xl border-2 transition-all duration-200 ${ativo ? "border-green-500/60 bg-green-500/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}>
@@ -126,29 +135,28 @@ function UnnichatCard({ selected, onSelect, register }: Omit<CanalCardProps, "ca
       {ativo && (
         <div className="space-y-3 border-t border-green-500/20 px-4 pb-4 pt-3">
           <div>
-            <label className="mb-1 block text-xs text-white/50">Nome da conexão (opcional)</label>
-            <Input placeholder="ex: WhatsApp Principal" {...register("unnichatConexaoNome")} />
+            <label className="mb-1 block text-xs text-white/50">Conexão Unnichat</label>
+            {conexoes.length === 0 ? (
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-400">
+                Nenhuma conexão disponível.{" "}
+                <strong>Configure em Configurações → Unnichat</strong> antes de continuar.
+              </div>
+            ) : (
+              <select
+                className="h-10 w-full rounded-md border border-white/20 bg-surface px-3 text-sm"
+                value={conexaoUnnichatId ?? ""}
+                onChange={(e) => setValue("conexaoUnnichatId", e.target.value || undefined)}
+              >
+                <option value="">Selecione a conexão...</option>
+                {conexoes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+            )}
           </div>
-          <div className="rounded-lg bg-green-500/5 px-3 py-2 text-xs text-white/60">
-            <p>A <strong className="text-white">API Key</strong> é configurada globalmente em{" "}
-              <strong className="text-green-400">Configurações → Unnichat</strong>.
-              A URL do Webhook ficará disponível após salvar o agente.
-            </p>
-          </div>
-          <button type="button" onClick={() => setAberto(!aberto)}
-            className="flex items-center gap-1.5 text-xs text-green-400/70 hover:text-green-400">
-            {aberto ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            Como configurar no Unnichat?
-          </button>
-          {aberto && (
-            <div className="rounded-lg bg-white/5 p-3 text-xs text-white/60 space-y-1.5">
-              <ol className="list-inside list-decimal space-y-1">
-                <li>Acesse <strong className="text-white">Configurações → Unnichat</strong> e cole a API Key global</li>
-                <li>Salve este agente e copie a <strong className="text-white">URL do Webhook</strong> em <strong className="text-white">Editar Agente</strong></li>
-                <li>Configure o webhook no painel do Unnichat com essa URL</li>
-              </ol>
-            </div>
-          )}
+          <p className="text-xs text-white/40">
+            A URL do Webhook ficará disponível após salvar o agente.
+          </p>
         </div>
       )}
     </div>
@@ -542,7 +550,8 @@ export function NovoAgenteRecuperacao() {
               <UnnichatCard
                 selected={canal}
                 onSelect={(c) => setValue("canalIntegracao", c)}
-                register={register}
+                setValue={setValue}
+                conexaoUnnichatId={watch("conexaoUnnichatId")}
               />
               <ManyChatCard
                 selected={canal}

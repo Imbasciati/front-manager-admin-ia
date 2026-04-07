@@ -23,9 +23,8 @@ export interface Agente {
   criadoEm: string;
   documentos: Documento[];
   canalIntegracao?: CanalIntegracao;
-  unnichatApiKey?: string | null;
   unnichatAtivo?: boolean;
-  unnichatConexaoNome?: string | null;
+  conexaoUnnichatId?: string | null;
   produto?: string | null;
   atuacao?: string | null;
 }
