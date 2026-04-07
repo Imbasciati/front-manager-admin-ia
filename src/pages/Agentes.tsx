@@ -51,8 +51,17 @@ export function Agentes() {
         data={data?.data ?? []}
         columns={[
           { key: "nome", label: "Nome" },
+          {
+            key: "produto",
+            label: "Profissão",
+            render: (row) => {
+              const p = row.produto as string | null | undefined;
+              if (!p) return <span className="text-white/30">—</span>;
+              const profissao = p.includes(": ") ? p.split(": ")[1] : p;
+              return <span>{profissao}</span>;
+            },
+          },
           { key: "modelo", label: "Modelo" },
-          { key: "tom", label: "Tom" },
           { key: "ativo", label: "Status", render: (row) => <StatusBadge type="status" value={row.ativo ? "Ativo" : "Inativo"} /> },
           {
             key: "acoes",
