@@ -690,16 +690,16 @@ function BotoesAvaliacao({ mensagemId }: { mensagemId: string }) {
   }
 
   return (
-    <div className="relative mt-1.5 flex items-center gap-1">
+    <div className="relative mt-2 flex items-center gap-0.5 border-t border-white/[0.06] pt-2">
       {/* Like */}
       <button
         title="Resposta adequada"
         disabled={loading}
         onClick={() => { setDislikeAberto(false); enviar("POSITIVO"); }}
-        className={`flex h-6 w-6 items-center justify-center rounded-md transition ${
+        className={`group flex h-5 w-5 items-center justify-center rounded transition-all duration-150 ${
           avaliacao === "POSITIVO"
             ? "bg-emerald-500/20 text-emerald-400"
-            : "text-white/20 hover:bg-white/8 hover:text-emerald-400/80"
+            : "text-white/25 hover:bg-emerald-500/15 hover:text-emerald-400"
         }`}
       >
         <ThumbsUp className="h-3 w-3" />
@@ -713,19 +713,26 @@ function BotoesAvaliacao({ mensagemId }: { mensagemId: string }) {
           if (avaliacao === "NEGATIVO") return;
           setDislikeAberto((v) => !v);
         }}
-        className={`flex h-6 w-6 items-center justify-center rounded-md transition ${
+        className={`group flex h-5 w-5 items-center justify-center rounded transition-all duration-150 ${
           avaliacao === "NEGATIVO"
             ? "bg-rose-500/20 text-rose-400"
-            : "text-white/20 hover:bg-white/8 hover:text-rose-400/80"
+            : "text-white/25 hover:bg-rose-500/15 hover:text-rose-400"
         }`}
       >
         <ThumbsDown className="h-3 w-3" />
       </button>
 
-      {/* Popover de justificativa */}
+      {/* Label de estado */}
+      {avaliacao && (
+        <span className={`ml-1 text-[10px] ${avaliacao === "POSITIVO" ? "text-emerald-400/60" : "text-rose-400/60"}`}>
+          {avaliacao === "POSITIVO" ? "Aprovada" : "Reportada"}
+        </span>
+      )}
+
+      {/* Popover de justificativa — abre acima */}
       {dislikeAberto && (
-        <div className="absolute bottom-8 left-0 z-30 w-64 rounded-xl border border-white/10 bg-[#0c1117] p-3 shadow-2xl">
-          <p className="mb-2 text-[11px] font-semibold text-white/50">
+        <div className="absolute bottom-full left-0 z-30 mb-2 w-64 rounded-xl border border-white/10 bg-[#0c1117] p-3 shadow-2xl">
+          <p className="mb-2 text-[11px] font-semibold text-white/60">
             Por que esta resposta não foi adequada?
           </p>
           <textarea
@@ -734,7 +741,7 @@ function BotoesAvaliacao({ mensagemId }: { mensagemId: string }) {
             value={justificativa}
             onChange={(e) => setJustificativa(e.target.value)}
             placeholder="Descreva o que poderia ser melhorado..."
-            className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.05] p-2 text-xs text-white placeholder:text-white/25 focus:border-rose-500/40 focus:outline-none"
+            className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.05] p-2 text-xs text-white placeholder:text-white/20 focus:border-rose-500/40 focus:outline-none"
           />
           <div className="mt-2 flex gap-2">
             <button
@@ -1043,25 +1050,23 @@ function AbaUnnichat({ filtros }: { filtros: FiltrosAtendimento }) {
                               </div>
                             )}
 
-                            {/* Balão + botões de avaliação */}
-                            <div className={`flex flex-col ${isCliente ? "items-end" : "items-start"}`}>
-                              <div
-                                className={`max-w-full rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm ${
-                                  isCliente
-                                    ? "rounded-br-none bg-primary/20 text-white"
-                                    : "rounded-bl-none bg-white/8 text-white/90"
-                                }`}
-                              >
-                                <span className="whitespace-pre-line">{normalizeContent(msg.conteudo)}</span>
-                                <div className={`mt-1 flex items-center gap-1 justify-end text-[10px] ${isCliente ? "text-white/45" : "text-white/30"}`}>
-                                  {!isCliente && (
-                                    <span>{msg.origem === "AGENTE_IA" ? "IA" : "Vendedor"}</span>
-                                  )}
-                                  {!isCliente && <span>·</span>}
-                                  <span>{formatarHora(msg.criadoEm)}</span>
-                                </div>
+                            {/* Balão */}
+                            <div
+                              className={`max-w-[70%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm ${
+                                isCliente
+                                  ? "rounded-br-none bg-primary/20 text-white"
+                                  : "rounded-bl-none bg-white/8 text-white/90"
+                              }`}
+                            >
+                              <span className="whitespace-pre-line">{normalizeContent(msg.conteudo)}</span>
+                              <div className={`mt-1 flex items-center gap-1 justify-end text-[10px] ${isCliente ? "text-white/45" : "text-white/30"}`}>
+                                {!isCliente && (
+                                  <span>{msg.origem === "AGENTE_IA" ? "IA" : "Vendedor"}</span>
+                                )}
+                                {!isCliente && <span>·</span>}
+                                <span>{formatarHora(msg.criadoEm)}</span>
                               </div>
-                              {/* Botões de avaliação — apenas para mensagens da IA */}
+                              {/* Avaliação — dentro do balão, no fim de cada mensagem da IA */}
                               {msg.origem === "AGENTE_IA" && <BotoesAvaliacao mensagemId={msg.id} />}
                             </div>
 
