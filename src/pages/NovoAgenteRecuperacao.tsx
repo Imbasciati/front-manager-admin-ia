@@ -12,8 +12,6 @@ import {
   Briefcase,
   ChevronDown,
   ChevronUp,
-  Eye,
-  EyeOff,
   FileText,
   Info,
   MessageCircle,
@@ -72,7 +70,6 @@ const schema = z.object({
   todosVendedores: z.boolean().default(true),
   canalIntegracao: z.enum(["NENHUM", "UNNICHAT", "MANYCHAT", "AMBOS"]).default("NENHUM"),
   unnichatAtivo: z.boolean().optional(),
-  unnichatApiKey: z.string().optional(),
   unnichatConexaoNome: z.string().optional(),
   produto: z.string().optional(),
   atuacao: z.string().optional(),
@@ -99,12 +96,10 @@ interface CanalCardProps {
   canal: Canal;
   selected: Canal;
   onSelect: (c: Canal) => void;
-  mostrarKey: boolean;
-  setMostrarKey: (v: boolean) => void;
   register: ReturnType<typeof useForm<Values>>["register"];
 }
 
-function UnnichatCard({ selected, onSelect, mostrarKey, setMostrarKey, register }: Omit<CanalCardProps, "canal">) {
+function UnnichatCard({ selected, onSelect, register }: Omit<CanalCardProps, "canal">) {
   const ativo = selected === "UNNICHAT" || selected === "AMBOS";
   const [aberto, setAberto] = useState(false);
 
@@ -134,34 +129,23 @@ function UnnichatCard({ selected, onSelect, mostrarKey, setMostrarKey, register 
             <label className="mb-1 block text-xs text-white/50">Nome da conexão (opcional)</label>
             <Input placeholder="ex: WhatsApp Principal" {...register("unnichatConexaoNome")} />
           </div>
-          <div>
-            <label className="mb-1 block text-xs text-white/50">API Key do Unnichat</label>
-            <div className="relative">
-              <Input
-                type={mostrarKey ? "text" : "password"}
-                placeholder="Cole o Bearer token do Unnichat"
-                {...register("unnichatApiKey")}
-                className="pr-10 font-mono text-sm"
-              />
-              <button type="button" onClick={() => setMostrarKey(!mostrarKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
-                {mostrarKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+          <div className="rounded-lg bg-green-500/5 px-3 py-2 text-xs text-white/60">
+            <p>A <strong className="text-white">API Key</strong> é configurada globalmente em{" "}
+              <strong className="text-green-400">Configurações → Unnichat</strong>.
+              A URL do Webhook ficará disponível após salvar o agente.
+            </p>
           </div>
           <button type="button" onClick={() => setAberto(!aberto)}
             className="flex items-center gap-1.5 text-xs text-green-400/70 hover:text-green-400">
             {aberto ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            Como obter a API Key no Unnichat?
+            Como configurar no Unnichat?
           </button>
           {aberto && (
             <div className="rounded-lg bg-white/5 p-3 text-xs text-white/60 space-y-1.5">
               <ol className="list-inside list-decimal space-y-1">
-                <li>Acesse o painel do Unnichat → <strong className="text-white">Configurações</strong></li>
-                <li>Vá em <strong className="text-white">API</strong> e copie o Bearer token</li>
-                <li>Cole a API Key no campo acima</li>
-                <li>Após salvar, copie a <strong className="text-white">URL do Webhook</strong> em <strong className="text-white">Editar Agente</strong></li>
-                <li>Configure o webhook no painel do Unnichat</li>
+                <li>Acesse <strong className="text-white">Configurações → Unnichat</strong> e cole a API Key global</li>
+                <li>Salve este agente e copie a <strong className="text-white">URL do Webhook</strong> em <strong className="text-white">Editar Agente</strong></li>
+                <li>Configure o webhook no painel do Unnichat com essa URL</li>
               </ol>
             </div>
           )}
@@ -230,7 +214,6 @@ export function NovoAgenteRecuperacao() {
   const navigate = useNavigate();
   const [files, setFiles] = useState<File[]>([]);
   const [progress, setProgress] = useState(0);
-  const [mostrarKey, setMostrarKey] = useState(false);
   const [tipoAtuacao, setTipoAtuacao] = useState<TipoAtuacao>("");
   const [produtoOpcao, setProdutoOpcao] = useState("");
   const [produtosVariados, setProdutosVariados] = useState<ProdutoVariado[]>([
@@ -559,8 +542,6 @@ export function NovoAgenteRecuperacao() {
               <UnnichatCard
                 selected={canal}
                 onSelect={(c) => setValue("canalIntegracao", c)}
-                mostrarKey={mostrarKey}
-                setMostrarKey={setMostrarKey}
                 register={register}
               />
               <ManyChatCard

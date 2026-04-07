@@ -13,8 +13,6 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
-  Eye,
-  EyeOff,
   MessageCircle,
   MessageSquare,
   Sparkles,
@@ -60,7 +58,6 @@ const schema = z.object({
   tokensMaximos: z.coerce.number().int().min(50),
   canalIntegracao: z.enum(["NENHUM", "UNNICHAT", "MANYCHAT", "AMBOS"]).default("NENHUM"),
   unnichatAtivo: z.boolean().optional(),
-  unnichatApiKey: z.string().optional(),
   unnichatConexaoNome: z.string().optional(),
   produto: z.string().optional(),
   atuacao: z.string().optional(),
@@ -84,7 +81,6 @@ function tempInfo(t: number) {
 export function EditarAgente() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [mostrarKey, setMostrarKey] = useState(false);
   const [webhookCopied, setWebhookCopied] = useState(false);
   const [guiaUnnichat, setGuiaUnnichat] = useState(false);
   const [guiaManyChat, setGuiaManyChat] = useState(false);
@@ -332,14 +328,10 @@ export function EditarAgente() {
                     <label className="mb-1 block text-xs text-white/50">Nome da conexão (opcional)</label>
                     <Input placeholder="ex: WhatsApp Principal" {...register("unnichatConexaoNome")} />
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-white/50">API Key do Unnichat</label>
-                    <div className="relative">
-                      <Input type={mostrarKey ? "text" : "password"} placeholder="Cole o Bearer token do Unnichat" {...register("unnichatApiKey")} className="pr-10 font-mono text-sm" />
-                      <button type="button" onClick={() => setMostrarKey(!mostrarKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
-                        {mostrarKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
+                  <div className="rounded-lg bg-green-500/5 px-3 py-2 text-xs text-white/60">
+                    <p>A <strong className="text-white">API Key</strong> é configurada globalmente em{" "}
+                      <strong className="text-green-400">Configurações → Unnichat</strong>.
+                    </p>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-white/50">URL do Webhook (configure no Unnichat)</label>
@@ -358,8 +350,7 @@ export function EditarAgente() {
                   {guiaUnnichat && (
                     <div className="rounded-lg bg-white/5 p-3 text-xs text-white/60 space-y-1">
                       <ol className="list-inside list-decimal space-y-1">
-                        <li>Acesse o painel do Unnichat → <strong className="text-white">Configurações → API</strong></li>
-                        <li>Copie o <strong className="text-white">Bearer token</strong> e cole acima</li>
+                        <li>Configure a API Key em <strong className="text-white">Configurações → Unnichat</strong></li>
                         <li>Copie a <strong className="text-white">URL do Webhook</strong> acima</li>
                         <li>No Unnichat, configure o webhook com essa URL</li>
                         <li>Ative o recebimento e salve o agente</li>

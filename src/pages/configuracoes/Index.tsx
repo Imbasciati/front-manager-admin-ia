@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  Bot,
   Brain,
   Key,
   MessageCircle,
@@ -70,7 +69,7 @@ const CARDS: ConfigCard[] = [
     descricao: "Crie tokens para receber eventos de sistemas externos como n8n, Make e outras automações.",
   },
   {
-    to: "#",
+    to: "/configuracoes/agente",
     icon: MessageCircle,
     iconColor: "text-sky-400",
     iconBg: "bg-sky-500/20",
@@ -79,7 +78,6 @@ const CARDS: ConfigCard[] = [
     descricao: "Integre agentes ao Instagram e Messenger via ManyChat. Configure tokens, campos customizados e fluxos.",
     badge: "Instagram",
     badgeColor: "bg-sky-500/20 text-sky-400",
-    emBreve: true,
   },
   {
     to: "#",
@@ -91,23 +89,11 @@ const CARDS: ConfigCard[] = [
     descricao: "Conecte Telegram, e-mail e outros canais. Centralize todas as conversas dos clientes em um só lugar.",
     emBreve: true,
   },
-
-  // Avançado
-  {
-    to: "/configuracoes/agente",
-    icon: Bot,
-    iconColor: "text-pink-400",
-    iconBg: "bg-pink-500/20",
-    titulo: "Agente de Vendas IA",
-    categoria: "Avançado",
-    descricao: "Parâmetros avançados do agente autônomo: prompts globais, integrações ManyChat e variáveis de comportamento.",
-  },
 ];
 
 const GRUPOS: { label: string; categoria: string }[] = [
   { label: "Inteligência Artificial", categoria: "Inteligência Artificial" },
   { label: "Integrações",             categoria: "Integração"               },
-  { label: "Avançado",                categoria: "Avançado"                 },
 ];
 
 // ── card ──────────────────────────────────────────────────────────────────────
