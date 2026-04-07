@@ -4,9 +4,25 @@ import type { ApiResponse } from "../types/api";
 
 // ── Atendimentos Unnichat ─────────────────────────────────────────────────────
 
+export interface FiltrosAtendimento {
+  agenteId?:   string;
+  dataInicio?: string; // YYYY-MM-DD
+  dataFim?:    string; // YYYY-MM-DD
+  search?:     string;
+  status?:     string;
+}
+
 export const atendimentosService = {
-  list: () =>
-    api.get<ApiResponse<any[]>>("/atendimentos").then((r) => r.data.data),
+  list: (filtros?: FiltrosAtendimento) => {
+    const params = new URLSearchParams();
+    if (filtros?.agenteId)   params.set("agenteId",   filtros.agenteId);
+    if (filtros?.dataInicio) params.set("dataInicio", filtros.dataInicio);
+    if (filtros?.dataFim)    params.set("dataFim",    filtros.dataFim);
+    if (filtros?.search)     params.set("search",     filtros.search);
+    if (filtros?.status)     params.set("status",     filtros.status);
+    const qs = params.toString();
+    return api.get<ApiResponse<any[]>>(`/atendimentos${qs ? `?${qs}` : ""}`).then((r) => r.data.data);
+  },
 
   getMensagens: (atendimentoId: string) =>
     api.get<ApiResponse<any[]>>(`/atendimentos/${atendimentoId}/mensagens`).then((r) => r.data.data),
