@@ -17,11 +17,14 @@ import {
   Scale,
   Search,
   Stethoscope,
+  ThumbsDown,
+  ThumbsUp,
   User,
   Users,
   X,
   Zap,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { PageHeader } from "../components/shared/PageHeader";
 import { conversasService, atendimentosService, type FiltrosAtendimento } from "../services/atendimentos.service";
 import { agentesService } from "../services/agentes.service";
@@ -529,98 +532,237 @@ function useSseAtendimentos(
   }, []);
 }
 
-function FiltrosBar({
+function FiltrosDrawer({
+  aberto,
+  onFechar,
   filtros,
   onChange,
   agentes,
 }: {
+  aberto: boolean;
+  onFechar: () => void;
   filtros: FiltrosAtendimento;
   onChange: (f: FiltrosAtendimento) => void;
   agentes: Array<{ id: string; nome: string }>;
 }) {
   const temFiltro = !!(filtros.agenteId || filtros.dataInicio || filtros.dataFim || filtros.search);
+  const contAtivos = [filtros.agenteId, filtros.dataInicio, filtros.dataFim, filtros.search].filter(Boolean).length;
 
   return (
-    <div className="space-y-2 border-b border-white/10 px-3 py-2">
-      {/* Busca */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
-        <input
-          type="text"
-          placeholder="Buscar nome, telefone ou agente..."
-          value={filtros.search ?? ""}
-          onChange={(e) => onChange({ ...filtros, search: e.target.value || undefined })}
-          className="h-8 w-full rounded-md border border-white/10 bg-white/5 pl-8 pr-3 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50"
-        />
-      </div>
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onFechar}
+        className={`absolute inset-0 z-10 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${
+          aberto ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      />
 
-      {/* Linha de filtros adicionais */}
-      <div className="flex gap-2">
-        {/* Agente */}
-        <div className="relative flex-1">
-          <Bot className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-white/30" />
-          <select
-            value={filtros.agenteId ?? ""}
-            onChange={(e) => onChange({ ...filtros, agenteId: e.target.value || undefined })}
-            className="h-7 w-full rounded-md border border-white/10 bg-white/5 pl-6 pr-2 text-[11px] text-white focus:outline-none focus:border-primary/50 appearance-none"
+      {/* Drawer — desliza da esquerda */}
+      <div
+        className={`absolute left-0 top-0 z-20 flex h-full w-72 flex-col border-r border-white/10 bg-[#0c1117] shadow-2xl transition-transform duration-300 ease-out ${
+          aberto ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Cabeçalho do drawer */}
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15">
+              <Filter className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <span className="text-sm font-semibold text-white">Filtros</span>
+            {contAtivos > 0 && (
+              <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                {contAtivos}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={onFechar}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 transition hover:bg-white/10 hover:text-white"
           >
-            <option value="">Todos os agentes</option>
-            {agentes.map((a) => (
-              <option key={a.id} value={a.id}>{a.nome}</option>
-            ))}
-          </select>
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        {/* Data início */}
-        <div className="relative">
-          <CalendarDays className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-white/30" />
-          <input
-            type="date"
-            value={filtros.dataInicio ?? ""}
-            onChange={(e) => onChange({ ...filtros, dataInicio: e.target.value || undefined })}
-            className="h-7 rounded-md border border-white/10 bg-white/5 pl-6 pr-1 text-[11px] text-white focus:outline-none focus:border-primary/50 w-32"
-          />
+        {/* Corpo */}
+        <div className="flex-1 space-y-6 overflow-y-auto p-4">
+
+          {/* Busca */}
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Busca</p>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+              <input
+                type="text"
+                placeholder="Nome, telefone ou agente..."
+                value={filtros.search ?? ""}
+                onChange={(e) => onChange({ ...filtros, search: e.target.value || undefined })}
+                className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.05] pl-9 pr-3 text-sm text-white placeholder:text-white/25 transition focus:border-primary/40 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Agente */}
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Agente</p>
+            <div className="relative">
+              <Bot className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+              <select
+                value={filtros.agenteId ?? ""}
+                onChange={(e) => onChange({ ...filtros, agenteId: e.target.value || undefined })}
+                className="h-9 w-full appearance-none rounded-lg border border-white/10 bg-white/[0.05] pl-9 pr-3 text-sm text-white transition focus:border-primary/40 focus:outline-none"
+              >
+                <option value="">Todos os agentes</option>
+                {agentes.map((a) => (
+                  <option key={a.id} value={a.id}>{a.nome}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Período */}
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35">Período</p>
+            <div className="space-y-2">
+              <div>
+                <p className="mb-1.5 text-xs text-white/40">De</p>
+                <div className="relative">
+                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+                  <input
+                    type="date"
+                    value={filtros.dataInicio ?? ""}
+                    onChange={(e) => onChange({ ...filtros, dataInicio: e.target.value || undefined })}
+                    className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.05] pl-9 pr-3 text-sm text-white transition focus:border-primary/40 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="mb-1.5 text-xs text-white/40">Até</p>
+                <div className="relative">
+                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+                  <input
+                    type="date"
+                    value={filtros.dataFim ?? ""}
+                    onChange={(e) => onChange({ ...filtros, dataFim: e.target.value || undefined })}
+                    className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.05] pl-9 pr-3 text-sm text-white transition focus:border-primary/40 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Data fim */}
-        <div className="relative">
-          <input
-            type="date"
-            value={filtros.dataFim ?? ""}
-            onChange={(e) => onChange({ ...filtros, dataFim: e.target.value || undefined })}
-            className="h-7 rounded-md border border-white/10 bg-white/5 px-2 text-[11px] text-white focus:outline-none focus:border-primary/50 w-28"
-          />
+        {/* Rodapé — limpar filtros */}
+        <div className={`border-t border-white/10 p-4 transition-opacity duration-200 ${temFiltro ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+          <button
+            onClick={() => { onChange({}); onFechar(); }}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] py-2 text-sm text-white/50 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400"
+          >
+            <X className="h-3.5 w-3.5" />
+            Limpar filtros
+          </button>
         </div>
       </div>
+    </>
+  );
+}
 
-      {/* Limpar filtros */}
-      {temFiltro && (
-        <button
-          onClick={() => onChange({})}
-          className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white transition"
-        >
-          <X className="h-3 w-3" />
-          Limpar filtros
-        </button>
+function BotoesAvaliacao({ mensagemId }: { mensagemId: string }) {
+  const [avaliacao, setAvaliacao] = useState<"POSITIVO" | "NEGATIVO" | null>(null);
+  const [dislikeAberto, setDislikeAberto] = useState(false);
+  const [justificativa, setJustificativa] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function enviar(tipo: "POSITIVO" | "NEGATIVO", just?: string) {
+    setLoading(true);
+    try {
+      await atendimentosService.avaliarMensagem(mensagemId, { tipo, justificativa: just });
+      setAvaliacao(tipo);
+      setDislikeAberto(false);
+      setJustificativa("");
+      toast.success(tipo === "POSITIVO" ? "Resposta aprovada!" : "Feedback enviado!");
+    } catch {
+      toast.error("Erro ao enviar avaliação");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="relative mt-1.5 flex items-center gap-1">
+      {/* Like */}
+      <button
+        title="Resposta adequada"
+        disabled={loading}
+        onClick={() => { setDislikeAberto(false); enviar("POSITIVO"); }}
+        className={`flex h-6 w-6 items-center justify-center rounded-md transition ${
+          avaliacao === "POSITIVO"
+            ? "bg-emerald-500/20 text-emerald-400"
+            : "text-white/20 hover:bg-white/8 hover:text-emerald-400/80"
+        }`}
+      >
+        <ThumbsUp className="h-3 w-3" />
+      </button>
+
+      {/* Dislike */}
+      <button
+        title="Resposta inadequada"
+        disabled={loading}
+        onClick={() => {
+          if (avaliacao === "NEGATIVO") return;
+          setDislikeAberto((v) => !v);
+        }}
+        className={`flex h-6 w-6 items-center justify-center rounded-md transition ${
+          avaliacao === "NEGATIVO"
+            ? "bg-rose-500/20 text-rose-400"
+            : "text-white/20 hover:bg-white/8 hover:text-rose-400/80"
+        }`}
+      >
+        <ThumbsDown className="h-3 w-3" />
+      </button>
+
+      {/* Popover de justificativa */}
+      {dislikeAberto && (
+        <div className="absolute bottom-8 left-0 z-30 w-64 rounded-xl border border-white/10 bg-[#0c1117] p-3 shadow-2xl">
+          <p className="mb-2 text-[11px] font-semibold text-white/50">
+            Por que esta resposta não foi adequada?
+          </p>
+          <textarea
+            autoFocus
+            rows={3}
+            value={justificativa}
+            onChange={(e) => setJustificativa(e.target.value)}
+            placeholder="Descreva o que poderia ser melhorado..."
+            className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.05] p-2 text-xs text-white placeholder:text-white/25 focus:border-rose-500/40 focus:outline-none"
+          />
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={() => { setDislikeAberto(false); setJustificativa(""); }}
+              className="flex-1 rounded-lg border border-white/10 py-1.5 text-xs text-white/40 transition hover:text-white"
+            >
+              Cancelar
+            </button>
+            <button
+              disabled={!justificativa.trim() || loading}
+              onClick={() => enviar("NEGATIVO", justificativa.trim())}
+              className="flex-1 rounded-lg bg-rose-500/20 py-1.5 text-xs font-medium text-rose-400 transition hover:bg-rose-500/30 disabled:opacity-40"
+            >
+              Enviar
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-function AbaUnnichat() {
+function AbaUnnichat({ filtros }: { filtros: FiltrosAtendimento }) {
   const [atendimentoId, setAtendimentoId] = useState<string | null>(null);
   const [atendimentos, setAtendimentos] = useState<AtendimentoItem[]>([]);
   const [mensagens, setMensagens] = useState<MensagemItem[]>([]);
   const [loadingMensagens, setLoadingMensagens] = useState(false);
-  const [filtros, setFiltros] = useState<FiltrosAtendimento>({});
-  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  const { data: agentes = [] } = useQuery({
-    queryKey: ["agentes-lista"],
-    queryFn: () => agentesService.list({ limit: 200 }).then((r) => r.data as Array<{ id: string; nome: string }>),
-    staleTime: 60_000,
-  });
 
   // Carga inicial de atendimentos — reexecuta quando filtros mudam
   const { data: atendimentosInicial, isLoading } = useQuery({
@@ -722,28 +864,10 @@ function AbaUnnichat() {
             <Zap className="h-4 w-4 text-primary" />
             <span className="text-sm font-semibold text-white">Conversas</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-bold text-primary">
-              {atendimentos.length}
-            </span>
-            <button
-              onClick={() => setFiltrosAbertos((v) => !v)}
-              title="Filtros"
-              className={`flex h-6 w-6 items-center justify-center rounded-md transition ${
-                filtrosAbertos || Object.values(filtros).some(Boolean)
-                  ? "bg-primary/20 text-primary"
-                  : "text-white/40 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <Filter className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-bold text-primary">
+            {atendimentos.length}
+          </span>
         </div>
-
-        {/* Filtros (expansível) */}
-        {filtrosAbertos && (
-          <FiltrosBar filtros={filtros} onChange={setFiltros} agentes={agentes} />
-        )}
 
         {/* Lista de contatos */}
         <div className="flex-1 overflow-y-auto">
@@ -919,22 +1043,26 @@ function AbaUnnichat() {
                               </div>
                             )}
 
-                            {/* Balão */}
-                            <div
-                              className={`max-w-[70%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm ${
-                                isCliente
-                                  ? "rounded-br-none bg-primary/20 text-white"
-                                  : "rounded-bl-none bg-white/8 text-white/90"
-                              }`}
-                            >
-                              <span className="whitespace-pre-line">{normalizeContent(msg.conteudo)}</span>
-                              <div className={`mt-1 flex items-center gap-1 justify-end text-[10px] ${isCliente ? "text-white/45" : "text-white/30"}`}>
-                                {!isCliente && (
-                                  <span>{msg.origem === "AGENTE_IA" ? "IA" : "Vendedor"}</span>
-                                )}
-                                {!isCliente && <span>·</span>}
-                                <span>{formatarHora(msg.criadoEm)}</span>
+                            {/* Balão + botões de avaliação */}
+                            <div className={`flex flex-col ${isCliente ? "items-end" : "items-start"}`}>
+                              <div
+                                className={`max-w-full rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm ${
+                                  isCliente
+                                    ? "rounded-br-none bg-primary/20 text-white"
+                                    : "rounded-bl-none bg-white/8 text-white/90"
+                                }`}
+                              >
+                                <span className="whitespace-pre-line">{normalizeContent(msg.conteudo)}</span>
+                                <div className={`mt-1 flex items-center gap-1 justify-end text-[10px] ${isCliente ? "text-white/45" : "text-white/30"}`}>
+                                  {!isCliente && (
+                                    <span>{msg.origem === "AGENTE_IA" ? "IA" : "Vendedor"}</span>
+                                  )}
+                                  {!isCliente && <span>·</span>}
+                                  <span>{formatarHora(msg.criadoEm)}</span>
+                                </div>
                               </div>
+                              {/* Botões de avaliação — apenas para mensagens da IA */}
+                              {msg.origem === "AGENTE_IA" && <BotoesAvaliacao mensagemId={msg.id} />}
                             </div>
 
                             {/* Avatar cliente */}
@@ -965,6 +1093,16 @@ type Aba = "unnichat" | "supabase";
 
 export function Atendimentos() {
   const [aba, setAba] = useState<Aba>("unnichat");
+  const [filtros, setFiltros] = useState<FiltrosAtendimento>({});
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+
+  const { data: agentes = [] } = useQuery({
+    queryKey: ["agentes-lista"],
+    queryFn: () => agentesService.list({ limit: 200 }).then((r) => r.data as Array<{ id: string; nome: string }>),
+    staleTime: 60_000,
+  });
+
+  const contFiltros = [filtros.agenteId, filtros.dataInicio, filtros.dataFim, filtros.search].filter(Boolean).length;
 
   return (
     <div className="flex h-full flex-col space-y-4">
@@ -973,31 +1111,67 @@ export function Atendimentos() {
         subtitle="Visualize conversas dos atendimentos realizados"
       />
 
-      {/* tabs */}
-      <div className="flex gap-1 rounded-lg border border-white/10 bg-white/5 p-1 w-fit">
-        <button
-          onClick={() => setAba("unnichat")}
-          className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition ${
-            aba === "unnichat" ? "bg-primary text-white shadow" : "text-white/60 hover:text-white"
-          }`}
-        >
-          <Zap className="h-4 w-4" />
-          Unnichat
-        </button>
-        <button
-          onClick={() => setAba("supabase")}
-          className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition ${
-            aba === "supabase" ? "bg-primary text-white shadow" : "text-white/60 hover:text-white"
-          }`}
-        >
-          <MessageCircle className="h-4 w-4" />
-          Supabase
-        </button>
+      {/* Linha de tabs + botão de filtros */}
+      <div className="flex items-center gap-3">
+        {/* Tabs */}
+        <div className="flex gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
+          <button
+            onClick={() => setAba("unnichat")}
+            className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition ${
+              aba === "unnichat" ? "bg-primary text-white shadow" : "text-white/60 hover:text-white"
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            Unnichat
+          </button>
+          <button
+            onClick={() => setAba("supabase")}
+            className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition ${
+              aba === "supabase" ? "bg-primary text-white shadow" : "text-white/60 hover:text-white"
+            }`}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Supabase
+          </button>
+        </div>
+
+        {/* Divisor */}
+        <div className="h-6 w-px bg-white/10" />
+
+        {/* Botão de filtros — só exibido na aba Unnichat */}
+        {aba === "unnichat" && (
+          <button
+            onClick={() => setFiltrosAbertos(true)}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+              contFiltros > 0
+                ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
+                : "border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <Filter className="h-4 w-4" />
+            Filtros
+            {contFiltros > 0 && (
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+                {contFiltros}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
-      {/* conteúdo */}
-      <div className="flex min-h-0 flex-1">
-        {aba === "unnichat" ? <AbaUnnichat /> : <AbaSupabase />}
+      {/* Conteúdo com drawer de filtros posicionado relativamente */}
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        {/* Drawer de filtros */}
+        <FiltrosDrawer
+          aberto={filtrosAbertos}
+          onFechar={() => setFiltrosAbertos(false)}
+          filtros={filtros}
+          onChange={setFiltros}
+          agentes={agentes}
+        />
+
+        {/* Aba ativa */}
+        {aba === "unnichat" ? <AbaUnnichat filtros={filtros} /> : <AbaSupabase />}
       </div>
     </div>
   );

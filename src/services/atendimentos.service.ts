@@ -26,6 +26,9 @@ export const atendimentosService = {
 
   getMensagens: (atendimentoId: string) =>
     api.get<ApiResponse<any[]>>(`/atendimentos/${atendimentoId}/mensagens`).then((r) => r.data.data),
+
+  avaliarMensagem: (mensagemId: string, payload: { tipo: "POSITIVO" | "NEGATIVO"; justificativa?: string }) =>
+    api.post<ApiResponse<any>>(`/atendimentos/mensagens/${mensagemId}/avaliar`, payload).then((r) => r.data.data),
 };
 
 // ── Conversas Supabase ────────────────────────────────────────────────────────
