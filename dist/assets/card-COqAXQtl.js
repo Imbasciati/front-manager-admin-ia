@@ -1,1 +1,0 @@
-import{j as s}from"./vendor-query-CXzAlNqN.js";import{d as e}from"./index-BG4B2Vne.js";function t({className:r,...o}){return s.jsx("div",{className:e("rounded-xl border border-white/10 bg-surface p-4 shadow-sm",r),...o})}export{t as C};

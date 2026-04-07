@@ -10,7 +10,6 @@ import {
   EyeOff,
   Loader2,
   Save,
-  WifiOff,
   XCircle,
   Zap,
 } from "lucide-react";
