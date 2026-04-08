@@ -13,9 +13,12 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  Info,
   MessageCircle,
   MessageSquare,
+  Plus,
   Sparkles,
+  Trash2,
   Zap,
 } from "lucide-react";
 import { Input } from "../components/ui/input";
@@ -28,6 +31,15 @@ import { conexaoUnnichatService } from "../services/conexao-unnichat.service";
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
 type Canal = "NENHUM" | "UNNICHAT" | "MANYCHAT" | "AMBOS";
+
+interface ProdutoVariado {
+  nome: string;
+  descricao: string;
+  linkVendas: string;
+  valorProduto: string;
+  valorParcelado: string;
+  formasPagamento: string;
+}
 
 const PRODUTOS = [
   "Curso Perito para: Administrador",
@@ -170,6 +182,9 @@ export function EditarAgente() {
   const [guiaManyChat, setGuiaManyChat] = useState(false);
   const [produtoOpcao, setProdutoOpcao] = useState("");
   const [atuacaoOpcao, setAtuacaoOpcao] = useState("");
+  const [produtosVariados, setProdutosVariados] = useState<ProdutoVariado[]>([
+    { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "" },
+  ]);
 
   const { data: agente } = useQuery({
     queryKey: ["agente", id],
@@ -181,11 +196,13 @@ export function EditarAgente() {
     resolver: zodResolver(schema),
   });
 
+  const isProdutosVariados = agente?.produto === "PRODUTOS_VARIADOS";
+
   useEffect(() => {
     if (agente) {
       reset(agente as Values);
       // Pré-popula dropdowns de produto e atuação
-      if (agente.produto) {
+      if (agente.produto && agente.produto !== "PRODUTOS_VARIADOS") {
         const isPredefinedProduto = (PRODUTOS as readonly string[]).slice(0, -1).includes(agente.produto);
         setProdutoOpcao(isPredefinedProduto ? agente.produto : "Outros");
       }
@@ -193,13 +210,49 @@ export function EditarAgente() {
         const isPredefinedAtuacao = (ATUACOES as readonly string[]).slice(0, -1).includes(agente.atuacao);
         setAtuacaoOpcao(isPredefinedAtuacao ? agente.atuacao : "Outros");
       }
+      // Pré-popula lista de produtos variados
+      if (agente.produto === "PRODUTOS_VARIADOS" && agente.contextoProdutos) {
+        try {
+          const parsed = JSON.parse(agente.contextoProdutos) as ProdutoVariado[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setProdutosVariados(parsed.map((p) => ({
+              nome: p.nome ?? "",
+              descricao: p.descricao ?? "",
+              linkVendas: p.linkVendas ?? "",
+              valorProduto: p.valorProduto ?? "",
+              valorParcelado: p.valorParcelado ?? "",
+              formasPagamento: p.formasPagamento ?? "",
+            })));
+          }
+        } catch {
+          // contextoProdutos malformado — mantém estado inicial
+        }
+      }
     }
   }, [agente, reset]);
 
   const mutation = useMutation({
     mutationFn: (values: Values) => agentesService.update(id as string, values),
     onSuccess: () => toast.success("Agente atualizado com sucesso!"),
+    onError: (error: unknown) => {
+      const msg =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Erro ao salvar. Verifique os dados e tente novamente.";
+      toast.error(msg);
+    },
   });
+
+  function updateProduto(index: number, field: keyof ProdutoVariado, value: string) {
+    setProdutosVariados((prev) => prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)));
+  }
+
+  function addProduto() {
+    setProdutosVariados((prev) => [...prev, { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "" }]);
+  }
+
+  function removeProduto(index: number) {
+    setProdutosVariados((prev) => prev.filter((_, i) => i !== index));
+  }
 
   const temperatura = Number(watch("temperatura") ?? 0.7);
   const modelo = watch("modelo");
@@ -247,7 +300,20 @@ export function EditarAgente() {
         </div>
       </div>
 
-      <form className="space-y-4" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
+      <form
+        className="space-y-4"
+        onSubmit={handleSubmit((values) => {
+          if (isProdutosVariados) {
+            const validos = produtosVariados.filter((p) => p.nome.trim());
+            if (validos.length === 0) {
+              toast.error("Adicione pelo menos um produto com nome");
+              return;
+            }
+            values.contextoProdutos = JSON.stringify(produtosVariados);
+          }
+          mutation.mutate(values);
+        })}
+      >
 
         {/* ── Seção 1: Identidade ── */}
         <SectionCard icon={<Bot className="h-4 w-4 text-primary" />} title="Identidade do Agente">
@@ -263,11 +329,112 @@ export function EditarAgente() {
               <p className="mt-1 text-[11px] text-white/30">Instruções gerais de como o agente deve se comportar.</p>
               {errors.promptSistema && <p className="mt-1 text-xs text-red-400">{errors.promptSistema.message}</p>}
             </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-white/60">Contexto de Produtos/Serviços</label>
-              <Textarea rows={4} placeholder="Descreva seus produtos, preços, condições..." {...register("contextoProdutos")} />
-              <p className="mt-1 text-[11px] text-white/30">Informações sobre produtos e serviços que o agente usará nas respostas.</p>
-            </div>
+            {isProdutosVariados ? (
+              <div>
+                <label className="mb-3 block text-xs font-medium text-white/60">Produtos / Serviços</label>
+                <div className="space-y-3">
+                  {produtosVariados.map((produto, index) => (
+                    <div key={index} className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-white/60">Produto {index + 1}</span>
+                        {produtosVariados.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeProduto(index)}
+                            className="flex items-center gap-1 rounded px-2 py-1 text-xs text-red-400/70 transition hover:bg-red-500/10 hover:text-red-400"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Remover
+                          </button>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs text-white/50">Nome do Produto</label>
+                        <Input
+                          placeholder="Ex: Curso Perito para Psicólogo"
+                          value={produto.nome}
+                          onChange={(e) => updateProduto(index, "nome", e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs text-white/50">Descrição do Produto</label>
+                        <Textarea
+                          rows={3}
+                          placeholder="Descreva o produto, benefícios, diferenciais..."
+                          value={produto.descricao}
+                          onChange={(e) => updateProduto(index, "descricao", e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1 flex items-center gap-1.5 text-xs text-white/50">
+                          Link de Vendas
+                          <span className="group relative">
+                            <Info className="h-3.5 w-3.5 cursor-help text-white/30 hover:text-white/60" />
+                            <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-black/90 px-3 py-2 text-[11px] text-white/80 shadow-xl group-hover:block">
+                              O link de vendas precisa ser o da IA de Recuperação configurada no Unnichat
+                            </span>
+                          </span>
+                        </label>
+                        <Input
+                          placeholder="https://..."
+                          value={produto.linkVendas}
+                          onChange={(e) => updateProduto(index, "linkVendas", e.target.value)}
+                        />
+                        <p className="mt-1 text-[11px] text-orange-400/70">
+                          O link de vendas precisa ser o da IA de Recuperação
+                        </p>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs text-white/50">Valor do Produto</label>
+                          <Input
+                            placeholder="Ex: R$ 997,00"
+                            value={produto.valorProduto}
+                            onChange={(e) => updateProduto(index, "valorProduto", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs text-white/50">Valor Parcelado</label>
+                          <Input
+                            placeholder="Ex: 12x de R$ 97,00"
+                            value={produto.valorParcelado}
+                            onChange={(e) => updateProduto(index, "valorParcelado", e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs text-white/50">Formas de Pagamento</label>
+                        <Input
+                          placeholder="Ex: Cartão de crédito, PIX, boleto..."
+                          value={produto.formasPagamento}
+                          onChange={(e) => updateProduto(index, "formasPagamento", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addProduto}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-white/5 py-3 text-sm text-white/50 transition hover:border-white/30 hover:bg-white/10 hover:text-white/70"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar Produto
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-white/60">Contexto de Produtos/Serviços</label>
+                <Textarea rows={4} placeholder="Descreva seus produtos, preços, condições..." {...register("contextoProdutos")} />
+                <p className="mt-1 text-[11px] text-white/30">Informações sobre produtos e serviços que o agente usará nas respostas.</p>
+              </div>
+            )}
           </div>
         </SectionCard>
 
@@ -330,43 +497,59 @@ export function EditarAgente() {
             {/* Produto */}
             <div>
               <label className="mb-1.5 block text-xs font-medium text-white/60">Produto</label>
-              <select
-                className="h-10 w-full rounded-md border border-white/20 bg-surface px-3 text-sm"
-                value={produtoOpcao}
-                onChange={(e) => handleProdutoChange(e.target.value)}
-              >
-                <option value="">Selecione o produto...</option>
-                {PRODUTOS.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-              {produtoOpcao === "Outros" && (
-                <Input
-                  className="mt-2"
-                  placeholder="Descreva o produto personalizado..."
-                  {...register("produto")}
-                />
+              {isProdutosVariados ? (
+                <div className="flex h-10 items-center rounded-md border border-orange-500/30 bg-orange-500/10 px-3 text-sm text-orange-300">
+                  Produtos Variados
+                </div>
+              ) : (
+                <>
+                  <select
+                    className="h-10 w-full rounded-md border border-white/20 bg-surface px-3 text-sm"
+                    value={produtoOpcao}
+                    onChange={(e) => handleProdutoChange(e.target.value)}
+                  >
+                    <option value="">Selecione o produto...</option>
+                    {PRODUTOS.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                  {produtoOpcao === "Outros" && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Descreva o produto personalizado..."
+                      {...register("produto")}
+                    />
+                  )}
+                </>
               )}
             </div>
             {/* Atuação */}
             <div>
               <label className="mb-1.5 block text-xs font-medium text-white/60">Atuação</label>
-              <select
-                className="h-10 w-full rounded-md border border-white/20 bg-surface px-3 text-sm"
-                value={atuacaoOpcao}
-                onChange={(e) => handleAtuacaoChange(e.target.value)}
-              >
-                <option value="">Selecione a atuação...</option>
-                {ATUACOES.map((a) => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
-              {atuacaoOpcao === "Outros" && (
-                <Input
-                  className="mt-2"
-                  placeholder="Descreva a atuação personalizada..."
-                  {...register("atuacao")}
-                />
+              {isProdutosVariados ? (
+                <div className="flex h-10 items-center rounded-md border border-orange-500/30 bg-orange-500/10 px-3 text-sm text-orange-300">
+                  Recuperação
+                </div>
+              ) : (
+                <>
+                  <select
+                    className="h-10 w-full rounded-md border border-white/20 bg-surface px-3 text-sm"
+                    value={atuacaoOpcao}
+                    onChange={(e) => handleAtuacaoChange(e.target.value)}
+                  >
+                    <option value="">Selecione a atuação...</option>
+                    {ATUACOES.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                  {atuacaoOpcao === "Outros" && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Descreva a atuação personalizada..."
+                      {...register("atuacao")}
+                    />
+                  )}
+                </>
               )}
             </div>
           </div>
