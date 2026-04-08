@@ -690,19 +690,19 @@ function BotoesAvaliacao({ mensagemId }: { mensagemId: string }) {
   }
 
   return (
-    <div className="relative mt-2 flex items-center gap-0.5 border-t border-white/[0.06] pt-2">
+    <div className="relative flex flex-col items-center gap-1">
       {/* Like */}
       <button
         title="Resposta adequada"
         disabled={loading}
         onClick={() => { setDislikeAberto(false); enviar("POSITIVO"); }}
-        className={`group flex h-5 w-5 items-center justify-center rounded transition-all duration-150 ${
+        className={`flex h-6 w-6 items-center justify-center rounded-lg transition-all duration-150 ${
           avaliacao === "POSITIVO"
-            ? "bg-emerald-500/20 text-emerald-400"
-            : "text-white/25 hover:bg-emerald-500/15 hover:text-emerald-400"
+            ? "bg-emerald-500/25 text-emerald-400 ring-1 ring-emerald-500/30"
+            : "bg-white/[0.06] text-white/40 hover:bg-emerald-500/20 hover:text-emerald-400"
         }`}
       >
-        <ThumbsUp className="h-3 w-3" />
+        <ThumbsUp className="h-3.5 w-3.5" />
       </button>
 
       {/* Dislike */}
@@ -713,25 +713,18 @@ function BotoesAvaliacao({ mensagemId }: { mensagemId: string }) {
           if (avaliacao === "NEGATIVO") return;
           setDislikeAberto((v) => !v);
         }}
-        className={`group flex h-5 w-5 items-center justify-center rounded transition-all duration-150 ${
+        className={`flex h-6 w-6 items-center justify-center rounded-lg transition-all duration-150 ${
           avaliacao === "NEGATIVO"
-            ? "bg-rose-500/20 text-rose-400"
-            : "text-white/25 hover:bg-rose-500/15 hover:text-rose-400"
+            ? "bg-rose-500/25 text-rose-400 ring-1 ring-rose-500/30"
+            : "bg-white/[0.06] text-white/40 hover:bg-rose-500/20 hover:text-rose-400"
         }`}
       >
-        <ThumbsDown className="h-3 w-3" />
+        <ThumbsDown className="h-3.5 w-3.5" />
       </button>
 
-      {/* Label de estado */}
-      {avaliacao && (
-        <span className={`ml-1 text-[10px] ${avaliacao === "POSITIVO" ? "text-emerald-400/60" : "text-rose-400/60"}`}>
-          {avaliacao === "POSITIVO" ? "Aprovada" : "Reportada"}
-        </span>
-      )}
-
-      {/* Popover de justificativa — abre acima */}
+      {/* Popover de justificativa — abre à esquerda/acima */}
       {dislikeAberto && (
-        <div className="absolute bottom-full left-0 z-30 mb-2 w-64 rounded-xl border border-white/10 bg-[#0c1117] p-3 shadow-2xl">
+        <div className="absolute right-8 top-0 z-30 w-64 rounded-xl border border-white/10 bg-[#0c1117] p-3 shadow-2xl">
           <p className="mb-2 text-[11px] font-semibold text-white/60">
             Por que esta resposta não foi adequada?
           </p>
@@ -1066,9 +1059,14 @@ function AbaUnnichat({ filtros }: { filtros: FiltrosAtendimento }) {
                                 {!isCliente && <span>·</span>}
                                 <span>{formatarHora(msg.criadoEm)}</span>
                               </div>
-                              {/* Avaliação — dentro do balão, no fim de cada mensagem da IA */}
-                              {msg.origem === "AGENTE_IA" && <BotoesAvaliacao mensagemId={msg.id} />}
                             </div>
+
+                            {/* Botões de avaliação — ao lado direito de cada mensagem da IA */}
+                            {msg.origem === "AGENTE_IA" && (
+                              <div className="mb-1 shrink-0">
+                                <BotoesAvaliacao mensagemId={msg.id} />
+                              </div>
+                            )}
 
                             {/* Avatar cliente */}
                             {isCliente && (
