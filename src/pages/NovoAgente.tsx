@@ -15,6 +15,7 @@ import {
   FileText,
   MessageCircle,
   MessageSquare,
+  Save,
   Sparkles,
   Users,
   Zap,
@@ -235,7 +236,7 @@ export function NovoAgente() {
   const [produtoOpcao, setProdutoOpcao] = useState("");
   const [atuacaoOpcao, setAtuacaoOpcao] = useState(atuacaoInicial);
 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<Values>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
       tom: "PROFISSIONAL",
@@ -267,18 +268,34 @@ export function NovoAgente() {
   }
 
   const mutation = useMutation({
-    mutationFn: (values: Values) => {
+    mutationFn: ({ values, ativo }: { values: Values; ativo: boolean }) => {
       const form = new FormData();
       Object.entries(values).forEach(([k, v]) => {
         if (v !== undefined && v !== null) form.append(k, String(v));
       });
+      form.append("ativo", String(ativo));
       files.forEach((f) => form.append("documentos", f));
       return agentesService.create(form);
     },
-    onSuccess: (agente) => {
-      toast.success("Agente criado com sucesso!");
+    onSuccess: (agente, vars) => {
+      toast.success(vars.ativo ? "Agente criado com sucesso!" : "Rascunho salvo! Ative o agente quando estiver pronto.");
       navigate(`/agentes/${agente.id}/editar`);
     },
+    onError: (error: unknown) => {
+      const msg =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Erro ao salvar o agente. Verifique os dados e tente novamente.";
+      toast.error(msg);
+    },
+  });
+
+  const handleCriarAtivo = handleSubmit((values) => {
+    setProgress(25);
+    mutation.mutate({ values, ativo: true }, { onSettled: () => setProgress(100) });
+  });
+
+  const handleSalvarRascunho = handleSubmit((values) => {
+    mutation.mutate({ values, ativo: false });
   });
 
   return (
@@ -298,13 +315,7 @@ export function NovoAgente() {
         </div>
       </div>
 
-      <form
-        className="space-y-4"
-        onSubmit={handleSubmit((values) => {
-          setProgress(25);
-          mutation.mutate(values, { onSettled: () => setProgress(100) });
-        })}
-      >
+      <form className="space-y-4" onSubmit={handleCriarAtivo}>
         {/* ── Seção 1: Identidade ── */}
         <SectionCard icon={<Bot className="h-4 w-4 text-primary" />} title="Identidade do Agente">
           <div className="space-y-3">
@@ -498,13 +509,23 @@ export function NovoAgente() {
           )}
         </SectionCard>
 
-        {/* Botão salvar */}
+        {/* Botões */}
         <div className="flex items-center justify-end gap-3 pb-6">
           <Button type="button" variant="outline" onClick={() => navigate("/agentes")}>
             Cancelar
           </Button>
-          <Button disabled={isSubmitting || mutation.isPending} className="px-8">
-            {mutation.isPending ? "Criando agente..." : "Criar Agente"}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSalvarRascunho}
+            disabled={mutation.isPending}
+            className="gap-2"
+          >
+            <Save className="h-4 w-4" />
+            Salvar Rascunho
+          </Button>
+          <Button type="submit" disabled={mutation.isPending} className="px-8">
+            {mutation.isPending ? "Salvando..." : "Criar Agente"}
           </Button>
         </div>
       </form>

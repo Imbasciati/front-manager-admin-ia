@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Plus,
   RefreshCw,
+  Save,
   Sparkles,
   Trash2,
   Users,
@@ -231,7 +232,7 @@ export function NovoAgenteRecuperacao() {
     { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "" },
   ]);
 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<Values>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
       tom: "PROFISSIONAL",
@@ -269,40 +270,49 @@ export function NovoAgenteRecuperacao() {
   }
 
   const mutation = useMutation({
-    mutationFn: (values: Values) => {
+    mutationFn: ({ values, ativo }: { values: Values; ativo: boolean }) => {
       const form = new FormData();
       Object.entries(values).forEach(([k, v]) => {
         if (v !== undefined && v !== null) form.append(k, String(v));
       });
+      form.append("ativo", String(ativo));
       files.forEach((f) => form.append("documentos", f));
       return agentesService.create(form);
     },
-    onSuccess: (agente) => {
-      toast.success("Agente criado com sucesso!");
+    onSuccess: (agente, vars) => {
+      toast.success(vars.ativo ? "Agente criado com sucesso!" : "Rascunho salvo! Ative o agente quando estiver pronto.");
       navigate(`/agentes/${agente.id}/editar`);
+    },
+    onError: (error: unknown) => {
+      const msg =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Erro ao salvar o agente. Verifique os dados e tente novamente.";
+      toast.error(msg);
     },
   });
 
-  function onSubmit(values: Values) {
-    if (tipoAtuacao === "") {
-      toast.error("Selecione o tipo de atuação");
-      return;
-    }
-
-    values.atuacao = "Recuperação";
-
-    if (tipoAtuacao === "Produtos Variados") {
-      const validos = produtosVariados.filter((p) => p.nome.trim());
-      if (validos.length === 0) {
-        toast.error("Adicione pelo menos um produto com nome");
+  function buildSubmitHandler(ativo: boolean) {
+    return handleSubmit((values) => {
+      if (tipoAtuacao === "") {
+        toast.error("Selecione o tipo de atuação");
         return;
       }
-      values.contextoProdutos = JSON.stringify(produtosVariados);
-      values.produto = "PRODUTOS_VARIADOS";
-    }
 
-    setProgress(25);
-    mutation.mutate(values, { onSettled: () => setProgress(100) });
+      values.atuacao = "Recuperação";
+
+      if (tipoAtuacao === "Produtos Variados") {
+        const validos = produtosVariados.filter((p) => p.nome.trim());
+        if (validos.length === 0) {
+          toast.error("Adicione pelo menos um produto com nome");
+          return;
+        }
+        values.contextoProdutos = JSON.stringify(produtosVariados);
+        values.produto = "PRODUTOS_VARIADOS";
+      }
+
+      setProgress(25);
+      mutation.mutate({ values, ativo }, { onSettled: () => setProgress(100) });
+    });
   }
 
   return (
@@ -325,7 +335,7 @@ export function NovoAgenteRecuperacao() {
         </div>
       </div>
 
-      <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+      <form className="space-y-4" onSubmit={buildSubmitHandler(true)}>
 
         {/* ── Seção 1: Produto & Atuação ── */}
         <SectionCard icon={<Briefcase className="h-4 w-4 text-orange-400" />} title="Produto & Atuação">
@@ -634,15 +644,25 @@ export function NovoAgenteRecuperacao() {
           </SectionCard>
         )}
 
-        {/* Botão salvar */}
+        {/* Botões */}
         {tipoAtuacao !== "" && (
           <div className="flex items-center justify-end gap-3 pb-6">
             <Button type="button" variant="outline" onClick={() => navigate("/agentes")}>
               Cancelar
             </Button>
-            <Button disabled={isSubmitting || mutation.isPending} className="gap-2 px-8 bg-orange-600 hover:bg-orange-500">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={buildSubmitHandler(false)}
+              disabled={mutation.isPending}
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Salvar Rascunho
+            </Button>
+            <Button type="submit" disabled={mutation.isPending} className="gap-2 px-8 bg-orange-600 hover:bg-orange-500">
               <RefreshCw className="h-4 w-4" />
-              {mutation.isPending ? "Criando agente..." : "Criar Agente de Recuperação"}
+              {mutation.isPending ? "Salvando..." : "Criar Agente de Recuperação"}
             </Button>
           </div>
         )}
