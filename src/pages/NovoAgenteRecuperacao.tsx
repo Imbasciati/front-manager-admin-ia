@@ -41,6 +41,9 @@ interface ProdutoVariado {
   nome: string;
   descricao: string;
   linkVendas: string;
+  valorProduto: string;
+  valorParcelado: string;
+  formasPagamento: string;
 }
 
 const PRODUTOS = [
@@ -225,7 +228,7 @@ export function NovoAgenteRecuperacao() {
   const [tipoAtuacao, setTipoAtuacao] = useState<TipoAtuacao>("");
   const [produtoOpcao, setProdutoOpcao] = useState("");
   const [produtosVariados, setProdutosVariados] = useState<ProdutoVariado[]>([
-    { nome: "", descricao: "", linkVendas: "" },
+    { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "" },
   ]);
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<Values>({
@@ -258,7 +261,7 @@ export function NovoAgenteRecuperacao() {
   }
 
   function addProduto() {
-    setProdutosVariados((prev) => [...prev, { nome: "", descricao: "", linkVendas: "" }]);
+    setProdutosVariados((prev) => [...prev, { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "" }]);
   }
 
   function removeProduto(index: number) {
@@ -468,6 +471,34 @@ export function NovoAgenteRecuperacao() {
                           <p className="mt-1 text-[11px] text-orange-400/70">
                             O link de vendas precisa ser o da IA de Recuperação
                           </p>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className="mb-1 block text-xs text-white/50">Valor do Produto</label>
+                            <Input
+                              placeholder="Ex: R$ 997,00"
+                              value={produto.valorProduto}
+                              onChange={(e) => updateProduto(index, "valorProduto", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs text-white/50">Valor Parcelado</label>
+                            <Input
+                              placeholder="Ex: 12x de R$ 97,00"
+                              value={produto.valorParcelado}
+                              onChange={(e) => updateProduto(index, "valorParcelado", e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-xs text-white/50">Formas de Pagamento</label>
+                          <Input
+                            placeholder="Ex: Cartão de crédito, PIX, boleto..."
+                            value={produto.formasPagamento}
+                            onChange={(e) => updateProduto(index, "formasPagamento", e.target.value)}
+                          />
                         </div>
                       </div>
                     ))}
