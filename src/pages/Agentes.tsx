@@ -61,6 +61,14 @@ export function Agentes() {
               return <span>{profissao}</span>;
             },
           },
+          {
+            key: "atuacao",
+            label: "Atuação",
+            render: (row) => {
+              const a = row.atuacao as string | null | undefined;
+              return a ? <span>{a}</span> : <span className="text-white/30">—</span>;
+            },
+          },
           { key: "modelo", label: "Modelo" },
           { key: "ativo", label: "Status", render: (row) => <StatusBadge type="status" value={row.ativo ? "Ativo" : "Inativo"} /> },
           {
