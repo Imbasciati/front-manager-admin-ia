@@ -45,6 +45,7 @@ interface ProdutoVariado {
   valorProduto: string;
   valorParcelado: string;
   formasPagamento: string;
+  checkoutIdFirepay: string;
 }
 
 const PRODUTOS = [
@@ -229,7 +230,7 @@ export function NovoAgenteRecuperacao() {
   const [tipoAtuacao, setTipoAtuacao] = useState<TipoAtuacao>("");
   const [produtoOpcao, setProdutoOpcao] = useState("");
   const [produtosVariados, setProdutosVariados] = useState<ProdutoVariado[]>([
-    { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "" },
+    { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "", checkoutIdFirepay: "" },
   ]);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<Values>({
@@ -262,7 +263,7 @@ export function NovoAgenteRecuperacao() {
   }
 
   function addProduto() {
-    setProdutosVariados((prev) => [...prev, { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "" }]);
+    setProdutosVariados((prev) => [...prev, { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "", checkoutIdFirepay: "" }]);
   }
 
   function removeProduto(index: number) {
@@ -508,6 +509,23 @@ export function NovoAgenteRecuperacao() {
                             placeholder="Ex: Cartão de crédito, PIX, boleto..."
                             value={produto.formasPagamento}
                             onChange={(e) => updateProduto(index, "formasPagamento", e.target.value)}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-1 flex items-center gap-1.5 text-xs text-white/50">
+                            ID de Checkout FirePay
+                            <span className="group relative">
+                              <Info className="h-3.5 w-3.5 cursor-help text-white/30 hover:text-white/60" />
+                              <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-black/90 px-3 py-2 text-[11px] text-white/80 shadow-xl group-hover:block">
+                                ID do checkout da FirePay usado para identificar e rotear mensagens deste produto.
+                              </span>
+                            </span>
+                          </label>
+                          <Input
+                            placeholder="Ex: chk_abc123..."
+                            value={produto.checkoutIdFirepay}
+                            onChange={(e) => updateProduto(index, "checkoutIdFirepay", e.target.value)}
                           />
                         </div>
                       </div>
