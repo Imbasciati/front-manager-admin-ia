@@ -7,9 +7,11 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  Loader2,
   Save,
   ShoppingCart,
   Trash2,
+  Wifi,
   XCircle,
 } from "lucide-react";
 import { PageHeader } from "../../components/shared/PageHeader";
@@ -22,6 +24,7 @@ export function ConfigFirepay() {
   const queryClient = useQueryClient();
   const [apiKey, setApiKey] = useState("");
   const [mostrar, setMostrar] = useState(false);
+  const [testeResult, setTesteResult] = useState<"ok" | "erro" | null>(null);
 
   const { data: config, isLoading } = useQuery({
     queryKey: ["firepay-config"],
@@ -47,7 +50,23 @@ export function ConfigFirepay() {
     mutationFn: firepayService.deleteApiKey,
     onSuccess: () => {
       toast.success("API Key removida");
+      setTesteResult(null);
       void queryClient.invalidateQueries({ queryKey: ["firepay-config"] });
+    },
+  });
+
+  const testeMutation = useMutation({
+    mutationFn: firepayService.testar,
+    onSuccess: () => {
+      setTesteResult("ok");
+      toast.success("Conexão com a FirePay estabelecida com sucesso!");
+    },
+    onError: (err: unknown) => {
+      setTesteResult("erro");
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Falha ao conectar à API da FirePay";
+      toast.error(msg);
     },
   });
 
@@ -92,20 +111,57 @@ export function ConfigFirepay() {
                       {config.apiKeyMascarada}
                     </p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => deleteMutation.mutate()}
-                    disabled={deleteMutation.isPending}
-                    className="shrink-0 text-red-400/70 hover:bg-red-500/10 hover:text-red-400"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => testeMutation.mutate()}
+                      disabled={testeMutation.isPending}
+                      className="gap-1.5 text-white/50 hover:bg-white/10 hover:text-white"
+                    >
+                      {testeMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Wifi className="h-4 w-4" />
+                      )}
+                      Testar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => deleteMutation.mutate()}
+                      disabled={deleteMutation.isPending}
+                      className="text-red-400/70 hover:bg-red-500/10 hover:text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <>
                   <XCircle className="h-5 w-5 flex-shrink-0 text-white/30" />
                   <p className="text-sm text-white/40">Nenhuma API Key configurada</p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Resultado do teste */}
+          {testeResult && (
+            <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
+              testeResult === "ok"
+                ? "border-green-500/30 bg-green-500/10"
+                : "border-red-500/30 bg-red-500/10"
+            }`}>
+              {testeResult === "ok" ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-400" />
+                  <p className="text-sm text-green-400">Conexão estabelecida — a API Key está válida e funcionando.</p>
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4 shrink-0 text-red-400" />
+                  <p className="text-sm text-red-400">Falha na conexão — verifique se a API Key é válida.</p>
                 </>
               )}
             </div>

@@ -279,16 +279,25 @@ export function NovoAgenteRecuperacao() {
     setFetchingFirepay((prev) => ({ ...prev, [index]: true }));
     try {
       const dados = await firepayService.getCheckout(id);
-      const link = dados.link ?? "";
-      const valor = dados.formatted_product_price ?? dados.formatted_price ?? (dados.product_price ? `R$ ${dados.product_price}` : "");
+      // Tenta extrair dados direto ou do primeiro item do array de transações
+      const item = dados.data?.transactions?.[0] ?? dados;
+      const link = item.link ?? "";
+      const valor =
+        item.formatted_product_price ??
+        item.formatted_price ??
+        (item.product_price ? `R$ ${String(item.product_price)}` : "");
+      if (!link && !valor) {
+        toast.error("A API da FirePay não retornou link ou valor para este ID. Preencha manualmente.");
+        return;
+      }
       setProdutosVariados((prev) =>
         prev.map((p, i) =>
           i === index
-            ? { ...p, ...(link ? { linkVendas: link } : {}), ...(valor ? { valorProduto: valor } : {}) }
+            ? { ...p, ...(link ? { linkVendas: String(link) } : {}), ...(valor ? { valorProduto: String(valor) } : {}) }
             : p,
         ),
       );
-      toast.success("Dados importados da FirePay!");
+      toast.success(`Dados importados!${!link ? " (link não disponível — preencha manualmente)" : ""}`);
     } catch {
       toast.error("Não foi possível buscar os dados. Verifique o ID e a API Key configurada.");
     } finally {

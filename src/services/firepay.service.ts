@@ -6,7 +6,7 @@ export interface FirepayConfig {
 }
 
 export interface FirepayCheckoutData {
-  // campos que a API pode retornar — mapeamos os conhecidos
+  // Campos de transação individual (webhook payload structure)
   link?: string;
   price?: number;
   formatted_price?: string;
@@ -14,6 +14,20 @@ export interface FirepayCheckoutData {
   formatted_product_price?: string;
   product?: { name?: string; slug?: string };
   checkout_id?: number;
+  // Campos do endpoint GET /api/public/transactions (dados agregados)
+  data?: {
+    total_sales_count?: number;
+    total_sales_value?: number;
+    transactions?: Array<{
+      link?: string;
+      price?: number;
+      formatted_price?: string;
+      product_price?: number;
+      formatted_product_price?: string;
+      [key: string]: unknown;
+    }>;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 
@@ -30,6 +44,11 @@ export const firepayService = {
 
   async deleteApiKey() {
     const { data } = await api.delete("/configuracoes/firepay");
+    return data.data;
+  },
+
+  async testar(): Promise<{ conectado: boolean }> {
+    const { data } = await api.post<{ data: { conectado: boolean } }>("/configuracoes/firepay/testar");
     return data.data;
   },
 
