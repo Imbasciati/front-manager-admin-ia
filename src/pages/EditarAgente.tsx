@@ -14,9 +14,11 @@ import {
   ChevronUp,
   Copy,
   Info,
+  Loader2,
   MessageCircle,
   MessageSquare,
   Plus,
+  Search,
   Sparkles,
   Trash2,
   Zap,
@@ -27,6 +29,7 @@ import { Button } from "../components/ui/button";
 import { agentesService } from "../services/agentes.service";
 import { ProviderModelSelect } from "../components/shared/ProviderModelSelect";
 import { conexaoUnnichatService } from "../services/conexao-unnichat.service";
+import { firepayService } from "../services/firepay.service";
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
@@ -186,6 +189,7 @@ export function EditarAgente() {
   const [produtosVariados, setProdutosVariados] = useState<ProdutoVariado[]>([
     { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "", checkoutIdFirepay: "" },
   ]);
+  const [fetchingFirepay, setFetchingFirepay] = useState<Record<number, boolean>>({});
 
   const { data: agente } = useQuery({
     queryKey: ["agente", id],
@@ -254,6 +258,29 @@ export function EditarAgente() {
 
   function removeProduto(index: number) {
     setProdutosVariados((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function buscarDadosFirepay(index: number) {
+    const id = produtosVariados[index].checkoutIdFirepay.trim();
+    if (!id) { toast.error("Informe o ID de Checkout FirePay primeiro"); return; }
+    setFetchingFirepay((prev) => ({ ...prev, [index]: true }));
+    try {
+      const dados = await firepayService.getCheckout(id);
+      const link = dados.link ?? "";
+      const valor = dados.formatted_product_price ?? dados.formatted_price ?? (dados.product_price ? `R$ ${dados.product_price}` : "");
+      setProdutosVariados((prev) =>
+        prev.map((p, i) =>
+          i === index
+            ? { ...p, ...(link ? { linkVendas: link } : {}), ...(valor ? { valorProduto: valor } : {}) }
+            : p,
+        ),
+      );
+      toast.success("Dados importados da FirePay!");
+    } catch {
+      toast.error("Não foi possível buscar os dados. Verifique o ID e a API Key configurada.");
+    } finally {
+      setFetchingFirepay((prev) => ({ ...prev, [index]: false }));
+    }
   }
 
   const temperatura = Number(watch("temperatura") ?? 0.7);
@@ -424,15 +451,30 @@ export function EditarAgente() {
                           <span className="group relative">
                             <Info className="h-3.5 w-3.5 cursor-help text-white/30 hover:text-white/60" />
                             <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-black/90 px-3 py-2 text-[11px] text-white/80 shadow-xl group-hover:block">
-                              ID do checkout da FirePay usado para identificar e rotear mensagens deste produto.
+                              ID do checkout da FirePay. Clique em "Buscar dados" para importar o link e valor automaticamente.
                             </span>
                           </span>
                         </label>
-                        <Input
-                          placeholder="Ex: chk_abc123..."
-                          value={produto.checkoutIdFirepay}
-                          onChange={(e) => updateProduto(index, "checkoutIdFirepay", e.target.value)}
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Ex: 1816"
+                            value={produto.checkoutIdFirepay}
+                            onChange={(e) => updateProduto(index, "checkoutIdFirepay", e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => buscarDadosFirepay(index)}
+                            disabled={fetchingFirepay[index]}
+                            className="flex shrink-0 items-center gap-1.5 rounded-md border border-orange-500/30 bg-orange-500/10 px-3 text-xs font-medium text-orange-400 transition hover:border-orange-500/50 hover:bg-orange-500/20 disabled:opacity-50"
+                          >
+                            {fetchingFirepay[index] ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Search className="h-3.5 w-3.5" />
+                            )}
+                            Buscar dados
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
