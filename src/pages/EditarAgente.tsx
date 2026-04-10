@@ -14,11 +14,11 @@ import {
   ChevronUp,
   Copy,
   Info,
-  Loader2,
+  // Loader2, // FirePay verify button — desativado temporariamente
   MessageCircle,
   MessageSquare,
   Plus,
-  Search,
+  // Search, // FirePay verify button — desativado temporariamente
   Sparkles,
   Trash2,
   Zap,
@@ -29,7 +29,7 @@ import { Button } from "../components/ui/button";
 import { agentesService } from "../services/agentes.service";
 import { ProviderModelSelect } from "../components/shared/ProviderModelSelect";
 import { conexaoUnnichatService } from "../services/conexao-unnichat.service";
-import { firepayService } from "../services/firepay.service";
+// import { firepayService } from "../services/firepay.service"; // FirePay verify — desativado temporariamente
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
@@ -189,7 +189,7 @@ export function EditarAgente() {
   const [produtosVariados, setProdutosVariados] = useState<ProdutoVariado[]>([
     { nome: "", descricao: "", linkVendas: "", valorProduto: "", valorParcelado: "", formasPagamento: "", checkoutIdFirepay: "" },
   ]);
-  const [fetchingFirepay, setFetchingFirepay] = useState<Record<number, boolean>>({});
+  // const [fetchingFirepay, setFetchingFirepay] = useState<Record<number, boolean>>({}); // FirePay verify — desativado temporariamente
 
   const { data: agente } = useQuery({
     queryKey: ["agente", id],
@@ -260,6 +260,7 @@ export function EditarAgente() {
     setProdutosVariados((prev) => prev.filter((_, i) => i !== index));
   }
 
+  /* FirePay verify — desativado temporariamente (API pública não retorna link/preço por ID)
   async function buscarDadosFirepay(index: number) {
     const id = produtosVariados[index].checkoutIdFirepay.trim();
     if (!id) { toast.error("Informe o ID de Checkout FirePay primeiro"); return; }
@@ -267,37 +268,18 @@ export function EditarAgente() {
     try {
       const resposta = await firepayService.getCheckout(id);
       const totalVendas: number = (resposta as any)?.data?.total_sales_count ?? 0;
-      const totalValor: number = (resposta as any)?.data?.total_sales_value ?? 0;
-
       if (totalVendas === 0) {
-        toast("Checkout verificado, mas sem transações nos últimos 30 dias. Preencha os campos manualmente.", { icon: "ℹ️" });
-        return;
+        toast("ID verificado, porém sem transações nos últimos 30 dias. Preencha link e valor manualmente no painel FirePay → Checkouts.", { icon: "ℹ️" });
+      } else {
+        toast.success(`Checkout #${id} verificado — ${totalVendas} transações nos últimos 30 dias. Preencha link e valor manualmente.`);
       }
-
-      // Calcula valor médio por transação (API retorna valor em centavos)
-      const valorCentavos = totalValor / totalVendas;
-      const valorReais = valorCentavos / 100;
-      const valorFormatado = valorReais.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-        minimumFractionDigits: 2,
-      });
-
-      setProdutosVariados((prev) =>
-        prev.map((p, i) =>
-          i === index
-            ? { ...p, valorProduto: valorFormatado }
-            : p,
-        ),
-      );
-
-      toast.success(`Valor preenchido: ${valorFormatado} (${totalVendas} transações nos últimos 30 dias). Preencha o link manualmente.`);
     } catch {
-      toast.error("Não foi possível buscar os dados. Verifique o ID e a API Key em Configurações → FirePay.");
+      toast.error("Não foi possível verificar o ID. Cheque a API Key em Configurações → FirePay.");
     } finally {
       setFetchingFirepay((prev) => ({ ...prev, [index]: false }));
     }
   }
+  */
 
   const temperatura = Number(watch("temperatura") ?? 0.7);
   const modelo = watch("modelo");
@@ -471,6 +453,12 @@ export function EditarAgente() {
                             </span>
                           </span>
                         </label>
+                        <Input
+                          placeholder="Ex: 1816"
+                          value={produto.checkoutIdFirepay}
+                          onChange={(e) => updateProduto(index, "checkoutIdFirepay", e.target.value)}
+                        />
+                        {/* Botão Verificar FirePay — desativado temporariamente
                         <div className="flex gap-2">
                           <Input
                             placeholder="Ex: 1816"
@@ -491,6 +479,7 @@ export function EditarAgente() {
                             Verificar
                           </button>
                         </div>
+                        */}
                       </div>
                     </div>
                   ))}
