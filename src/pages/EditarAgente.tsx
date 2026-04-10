@@ -267,13 +267,33 @@ export function EditarAgente() {
     try {
       const resposta = await firepayService.getCheckout(id);
       const totalVendas: number = (resposta as any)?.data?.total_sales_count ?? 0;
+      const totalValor: number = (resposta as any)?.data?.total_sales_value ?? 0;
+
       if (totalVendas === 0) {
-        toast("Checkout verificado, porém sem transações nos últimos 30 dias. Preencha link e valor manualmente.", { icon: "ℹ️" });
-      } else {
-        toast.success(`Checkout válido — ${totalVendas} transação(ões) nos últimos 30 dias. Preencha link e valor manualmente.`);
+        toast("Checkout verificado, mas sem transações nos últimos 30 dias. Preencha os campos manualmente.", { icon: "ℹ️" });
+        return;
       }
+
+      // Calcula valor médio por transação (API retorna valor em centavos)
+      const valorCentavos = totalValor / totalVendas;
+      const valorReais = valorCentavos / 100;
+      const valorFormatado = valorReais.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 2,
+      });
+
+      setProdutosVariados((prev) =>
+        prev.map((p, i) =>
+          i === index
+            ? { ...p, valorProduto: valorFormatado }
+            : p,
+        ),
+      );
+
+      toast.success(`Valor preenchido: ${valorFormatado} (${totalVendas} transações nos últimos 30 dias). Preencha o link manualmente.`);
     } catch {
-      toast.error("Não foi possível verificar o ID. Verifique o ID e a API Key configurada em Configurações → FirePay.");
+      toast.error("Não foi possível buscar os dados. Verifique o ID e a API Key em Configurações → FirePay.");
     } finally {
       setFetchingFirepay((prev) => ({ ...prev, [index]: false }));
     }
