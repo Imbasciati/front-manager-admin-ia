@@ -217,22 +217,25 @@ export function ConfigFirepay() {
           <p>
             Com a API Key configurada, ao cadastrar produtos nos{" "}
             <strong className="text-white/80">Agentes de Recuperação com Produtos Variados</strong>,
-            você poderá usar o botão{" "}
+            o botão{" "}
             <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-white/70">
-              Buscar dados
+              Verificar
             </span>{" "}
-            para importar automaticamente:
+            valida se o ID de Checkout da FirePay existe e informa o número de transações nos últimos 30 dias.
           </p>
           <ul className="space-y-1.5 pl-4">
             <li className="flex items-start gap-2">
               <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-400" />
-              <span><strong className="text-white/80">Link do Checkout</strong> — URL de pagamento do produto</span>
+              <span><strong className="text-white/80">Verificação de ID</strong> — confirma que o checkout existe na FirePay</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-400" />
-              <span><strong className="text-white/80">Valor do Produto</strong> — preço formatado em reais</span>
+              <span><strong className="text-white/80">Contagem de transações</strong> — mostra quantas vendas ocorreram nos últimos 30 dias</span>
             </li>
           </ul>
+          <p className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-400/80">
+            A API pública da FirePay não expõe link de checkout nem preço por produto — esses campos devem ser preenchidos manualmente.
+          </p>
           <p className="text-xs text-white/35">
             Base URL da API: <span className="font-mono">https://admin.firepay.com.br</span>
           </p>

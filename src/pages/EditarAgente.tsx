@@ -265,28 +265,15 @@ export function EditarAgente() {
     if (!id) { toast.error("Informe o ID de Checkout FirePay primeiro"); return; }
     setFetchingFirepay((prev) => ({ ...prev, [index]: true }));
     try {
-      const dados = await firepayService.getCheckout(id);
-      // Tenta extrair dados direto ou do primeiro item do array de transações
-      const item = dados.data?.transactions?.[0] ?? dados;
-      const link = item.link ?? "";
-      const valor =
-        item.formatted_product_price ??
-        item.formatted_price ??
-        (item.product_price ? `R$ ${String(item.product_price)}` : "");
-      if (!link && !valor) {
-        toast.error("A API da FirePay não retornou link ou valor para este ID. Preencha manualmente.");
-        return;
+      const resposta = await firepayService.getCheckout(id);
+      const totalVendas: number = (resposta as any)?.data?.total_sales_count ?? 0;
+      if (totalVendas === 0) {
+        toast("Checkout verificado, porém sem transações nos últimos 30 dias. Preencha link e valor manualmente.", { icon: "ℹ️" });
+      } else {
+        toast.success(`Checkout válido — ${totalVendas} transação(ões) nos últimos 30 dias. Preencha link e valor manualmente.`);
       }
-      setProdutosVariados((prev) =>
-        prev.map((p, i) =>
-          i === index
-            ? { ...p, ...(link ? { linkVendas: String(link) } : {}), ...(valor ? { valorProduto: String(valor) } : {}) }
-            : p,
-        ),
-      );
-      toast.success(`Dados importados!${!link ? " (link não disponível — preencha manualmente)" : ""}`);
     } catch {
-      toast.error("Não foi possível buscar os dados. Verifique o ID e a API Key configurada.");
+      toast.error("Não foi possível verificar o ID. Verifique o ID e a API Key configurada em Configurações → FirePay.");
     } finally {
       setFetchingFirepay((prev) => ({ ...prev, [index]: false }));
     }
@@ -460,7 +447,7 @@ export function EditarAgente() {
                           <span className="group relative">
                             <Info className="h-3.5 w-3.5 cursor-help text-white/30 hover:text-white/60" />
                             <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-black/90 px-3 py-2 text-[11px] text-white/80 shadow-xl group-hover:block">
-                              ID do checkout da FirePay. Clique em "Buscar dados" para importar o link e valor automaticamente.
+                              ID do checkout da FirePay. Clique em "Verificar" para confirmar que o ID existe na FirePay. Link e valor devem ser preenchidos manualmente.
                             </span>
                           </span>
                         </label>
@@ -481,7 +468,7 @@ export function EditarAgente() {
                             ) : (
                               <Search className="h-3.5 w-3.5" />
                             )}
-                            Buscar dados
+                            Verificar
                           </button>
                         </div>
                       </div>
