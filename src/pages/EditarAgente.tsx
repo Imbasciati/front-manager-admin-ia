@@ -377,6 +377,45 @@ export function EditarAgente() {
                       </div>
 
                       <div>
+                        <label className="mb-1 flex items-center gap-1.5 text-xs text-white/50">
+                          ID de Checkout FirePay
+                          <span className="group relative">
+                            <Info className="h-3.5 w-3.5 cursor-help text-white/30 hover:text-white/60" />
+                            <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-black/90 px-3 py-2 text-[11px] text-white/80 shadow-xl group-hover:block">
+                              ID do checkout da FirePay. Clique em "Verificar" para confirmar que o ID existe na FirePay. Link e valor devem ser preenchidos manualmente.
+                            </span>
+                          </span>
+                        </label>
+                        <Input
+                          placeholder="Ex: 1816"
+                          value={produto.checkoutIdFirepay}
+                          onChange={(e) => updateProduto(index, "checkoutIdFirepay", e.target.value)}
+                        />
+                        {/* Botão Verificar FirePay — desativado temporariamente
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Ex: 1816"
+                            value={produto.checkoutIdFirepay}
+                            onChange={(e) => updateProduto(index, "checkoutIdFirepay", e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => buscarDadosFirepay(index)}
+                            disabled={fetchingFirepay[index]}
+                            className="flex shrink-0 items-center gap-1.5 rounded-md border border-orange-500/30 bg-orange-500/10 px-3 text-xs font-medium text-orange-400 transition hover:border-orange-500/50 hover:bg-orange-500/20 disabled:opacity-50"
+                          >
+                            {fetchingFirepay[index] ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Search className="h-3.5 w-3.5" />
+                            )}
+                            Verificar
+                          </button>
+                        </div>
+                        */}
+                      </div>
+
+                      <div>
                         <label className="mb-1 block text-xs text-white/50">Nome do Produto</label>
                         <Input
                           placeholder="Ex: Curso Perito para Psicólogo"
@@ -441,45 +480,6 @@ export function EditarAgente() {
                           value={produto.formasPagamento}
                           onChange={(e) => updateProduto(index, "formasPagamento", e.target.value)}
                         />
-                      </div>
-
-                      <div>
-                        <label className="mb-1 flex items-center gap-1.5 text-xs text-white/50">
-                          ID de Checkout FirePay
-                          <span className="group relative">
-                            <Info className="h-3.5 w-3.5 cursor-help text-white/30 hover:text-white/60" />
-                            <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-black/90 px-3 py-2 text-[11px] text-white/80 shadow-xl group-hover:block">
-                              ID do checkout da FirePay. Clique em "Verificar" para confirmar que o ID existe na FirePay. Link e valor devem ser preenchidos manualmente.
-                            </span>
-                          </span>
-                        </label>
-                        <Input
-                          placeholder="Ex: 1816"
-                          value={produto.checkoutIdFirepay}
-                          onChange={(e) => updateProduto(index, "checkoutIdFirepay", e.target.value)}
-                        />
-                        {/* Botão Verificar FirePay — desativado temporariamente
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Ex: 1816"
-                            value={produto.checkoutIdFirepay}
-                            onChange={(e) => updateProduto(index, "checkoutIdFirepay", e.target.value)}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => buscarDadosFirepay(index)}
-                            disabled={fetchingFirepay[index]}
-                            className="flex shrink-0 items-center gap-1.5 rounded-md border border-orange-500/30 bg-orange-500/10 px-3 text-xs font-medium text-orange-400 transition hover:border-orange-500/50 hover:bg-orange-500/20 disabled:opacity-50"
-                          >
-                            {fetchingFirepay[index] ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Search className="h-3.5 w-3.5" />
-                            )}
-                            Verificar
-                          </button>
-                        </div>
-                        */}
                       </div>
                     </div>
                   ))}
