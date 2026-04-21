@@ -103,9 +103,8 @@ const CARDS: ConfigCard[] = [
     titulo: "WhatsApp",
     categoria: "Canais",
     descricao: "Conecte agentes diretamente ao WhatsApp Business API. Gerencie números, templates e automações.",
-    badge: "WhatsApp",
-    badgeColor: "bg-green-500/20 text-green-400",
-    emBreve: true,
+    badge: "Em Desenvolvimento",
+    badgeColor: "bg-amber-500/20 text-amber-400",
   },
   {
     to: "/configuracoes/telegram",
