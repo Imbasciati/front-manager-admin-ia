@@ -7,7 +7,6 @@ import {
   ShoppingCart,
   Webhook,
   Zap,
-  Link2,
 } from "lucide-react";
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
@@ -50,17 +49,6 @@ const CARDS: ConfigCard[] = [
 
   // Integrações
   {
-    to: "/configuracoes/unnichat",
-    icon: Zap,
-    iconColor: "text-green-400",
-    iconBg: "bg-green-500/20",
-    titulo: "Unnichat",
-    categoria: "Integração",
-    descricao: "Conecte agentes ao WhatsApp via Unnichat. Gerencie API Keys, URLs de webhook e monitore conexões ativas.",
-    badge: "WhatsApp",
-    badgeColor: "bg-green-500/20 text-green-400",
-  },
-  {
     to: "/configuracoes/webhooks",
     icon: Webhook,
     iconColor: "text-orange-400",
@@ -68,17 +56,6 @@ const CARDS: ConfigCard[] = [
     titulo: "Webhooks",
     categoria: "Integração",
     descricao: "Crie tokens para receber eventos de sistemas externos como n8n, Make e outras automações.",
-  },
-  {
-    to: "/configuracoes/agente",
-    icon: MessageCircle,
-    iconColor: "text-sky-400",
-    iconBg: "bg-sky-500/20",
-    titulo: "ManyChat",
-    categoria: "Integração",
-    descricao: "Integre agentes ao Instagram e Messenger via ManyChat. Configure tokens, campos customizados e fluxos.",
-    badge: "Instagram",
-    badgeColor: "bg-sky-500/20 text-sky-400",
   },
   {
     to: "/configuracoes/firepay",
@@ -91,21 +68,36 @@ const CARDS: ConfigCard[] = [
     badge: "Checkout",
     badgeColor: "bg-orange-500/20 text-orange-400",
   },
+
+  // Canais
   {
-    to: "#",
-    icon: Link2,
-    iconColor: "text-cyan-400",
-    iconBg: "bg-cyan-500/20",
-    titulo: "Canais",
-    categoria: "Integração",
-    descricao: "Conecte Telegram, e-mail e outros canais. Centralize todas as conversas dos clientes em um só lugar.",
-    emBreve: true,
+    to: "/configuracoes/unnichat",
+    icon: Zap,
+    iconColor: "text-green-400",
+    iconBg: "bg-green-500/20",
+    titulo: "Unnichat",
+    categoria: "Canais",
+    descricao: "Conecte agentes ao WhatsApp via Unnichat. Gerencie API Keys, URLs de webhook e monitore conexões ativas.",
+    badge: "WhatsApp",
+    badgeColor: "bg-green-500/20 text-green-400",
+  },
+  {
+    to: "/configuracoes/agente",
+    icon: MessageCircle,
+    iconColor: "text-sky-400",
+    iconBg: "bg-sky-500/20",
+    titulo: "ManyChat",
+    categoria: "Canais",
+    descricao: "Integre agentes ao Instagram e Messenger via ManyChat. Configure tokens, campos customizados e fluxos.",
+    badge: "Instagram",
+    badgeColor: "bg-sky-500/20 text-sky-400",
   },
 ];
 
 const GRUPOS: { label: string; categoria: string }[] = [
   { label: "Inteligência Artificial", categoria: "Inteligência Artificial" },
   { label: "Integrações",             categoria: "Integração"               },
+  { label: "Canais",                  categoria: "Canais"                   },
 ];
 
 // ── card ──────────────────────────────────────────────────────────────────────
