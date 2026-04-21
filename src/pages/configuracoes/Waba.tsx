@@ -55,7 +55,7 @@ function useMetaSDK() {
     if (loaded.current || !META_APP_ID) return;
     loaded.current = true;
 
-    window.fbAsyncInit = () => {
+    (window as any).fbAsyncInit = () => {
       (window as any).FB.init({
         appId:   META_APP_ID,
         cookie:  true,
