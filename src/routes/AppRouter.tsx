@@ -22,6 +22,7 @@ import { AgenteConfig } from "../pages/configuracoes/AgenteConfig";
 import { ConfiguracoesIndex } from "../pages/configuracoes/Index";
 import { ConfigUnnichat } from "../pages/configuracoes/Unnichat";
 import { ConfigFirepay } from "../pages/configuracoes/Firepay";
+import { ConfigWABA } from "../pages/configuracoes/Waba";
 import { Atendimentos } from "../pages/Atendimentos";
 
 const router = createBrowserRouter([
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
       { element: <Layout><AgenteConfig /></Layout>, path: "/configuracoes/agente" },
       { element: <Layout><ConfigUnnichat /></Layout>, path: "/configuracoes/unnichat" },
       { element: <Layout><ConfigFirepay /></Layout>, path: "/configuracoes/firepay" },
+      { element: <Layout><ConfigWABA /></Layout>,    path: "/configuracoes/whatsapp" },
       { path: "/", element: <Navigate to="/dashboard" replace /> },
     ],
   },
